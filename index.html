@@ -69,7 +69,7 @@
     <div class="art">🦶</div>
     <div class="desc">
       SQUACH BLASTS THROUGH DEEP SPACE<br>
-      <span style="color:#C9A84C;">← SWIPE LEFT/RIGHT → KINETIC SLING</span><br>
+      <span style="color:#C9A84C;">← SWIPE LEFT/RIGHT → SLINGSHOT</span><br>
       <span style="color:#00ffff;">↑ SWIPE UP → BARREL ROLL DODGE</span><br>
       <span style="color:#FFD700;">TAP → THROW · 5 STONES · AUTO RELOAD</span>
     </div>
@@ -110,12 +110,12 @@ const W=500,H=700;
 canvas.width=W;canvas.height=H;
 
 const LANES=3,LANE_W=W/LANES,SQUACH_BASE_Y=H-120;
-// PHYSICS CONFIG
-const TENSION = 175;
-const DAMPING = 14;
-const PUNCH = 850;
-
 function laneX(l){return LANE_W*l+LANE_W/2;}
+
+/* PHYSICS CONSTANTS - SLINGSHOT FEEL */
+const SPRING_TENSION = 180; 
+const DAMPING = 15;
+const PUNCH = 900;
 
 let state='start',score=0,dist=0,hiScore=parseInt(localStorage.getItem('sr2_hs')||'0');
 let gameTime=0,speed=0;
@@ -130,13 +130,11 @@ let spawnT=0,lastT=0,shake=0,invincible=0,lives=3;
 let globalScores=[];
 let touchStartX=0,touchStartY=0,touchMoved=false,touchDir='';
 
-// DECORATIONS
 const stars=[];
 for(let i=0;i<180;i++)stars.push({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.8+0.2,spd:2+Math.random()*6,b:0.3+Math.random()*0.7});
 const nebs=[];
 for(let i=0;i<4;i++)nebs.push({x:Math.random()*W,y:Math.random()*H,r:90+Math.random()*110,hue:Math.random()<0.5?260:200,a:0.03+Math.random()*0.04,spd:0.5+Math.random()});
 
-// AUDIO
 let AC=null,mNodes={},mPlaying=false,muteBtn;
 function getAC(){if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();return AC;}
 function tone(f,type,dur,vol=0.25,delay=0){const ac=getAC(),o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);o.type=type;o.frequency.setValueAtTime(f,ac.currentTime+delay);g.gain.setValueAtTime(0,ac.currentTime+delay);g.gain.linearRampToValueAtTime(vol,ac.currentTime+delay+0.01);g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+delay+dur);o.start(ac.currentTime+delay);o.stop(ac.currentTime+delay+dur+0.05);}
@@ -348,7 +346,7 @@ function drawSquach(t){
     ctx.beginPath();ctx.arc(0,0,30,0,Math.PI*2);ctx.stroke();
     ctx.globalAlpha=1;ctx.shadowBlur=0;ctx.restore();
   }
-  for(let i=0;i<3;i++){ctx.globalAlpha=i<lives?1:0.15;ctx.font='14px sans-serif';ctx.fillText('❤',12+i*22,H-12);}
+  for(let i=0;i<lives;i++){ctx.globalAlpha=1;ctx.font='14px sans-serif';ctx.fillText('❤',12+i*22,H-12);}
   ctx.globalAlpha=1;
   for(let l=0;l<LANES;l++){ctx.globalAlpha=l===curLane?1:0.28;ctx.fillStyle=l===curLane?'#FFD700':'#555';ctx.beginPath();ctx.arc(laneX(l),H-10,5,0,Math.PI*2);ctx.fill();}
 }
@@ -423,14 +421,16 @@ function drawExp(e){ctx.save();ctx.globalAlpha=e.life*0.35;ctx.strokeStyle=e.col
 function drawSpeedBar(){const bw=W-40,pct=Math.min(1,(speed-120)/500);ctx.fillStyle='rgba(255,255,255,0.04)';ctx.fillRect(20,H-22,bw,3);const g=ctx.createLinearGradient(20,0,20+bw,0);g.addColorStop(0,'#C9A84C');g.addColorStop(1,'#ff4444');ctx.fillStyle=g;ctx.fillRect(20,H-22,bw*pct,3);}
 
 function update(dt,t){
-  if(isNaN(dt)) dt = 0.016; 
+  /* FAILSAFE INITIALIZATION */
+  if (isNaN(dt) || dt > 0.1) dt = 0.016; 
+  
   speed=120+gameTime*13;gameTime+=dt;dist+=speed*dt/10;score=Math.floor(dist*2+gameTime*5);tunnelZ+=speed*dt;
   for(const s of stars){s.y+=s.spd*(speed/180)*dt*60;if(s.y>H+5)s.y=-5;}
   for(const n of nebs){n.y+=n.spd*(speed/180)*dt*30;if(n.y>H+n.r)n.y=-n.r;}
 
-  // SLING PHYSICS
+  /* SLINGSHOT PHYSICS CORE */
   const targetX = laneX(targetLane);
-  const force = (targetX - squachX) * TENSION;
+  const force = (targetX - squachX) * SPRING_TENSION;
   const resistance = velocityX * DAMPING;
   velocityX += (force - resistance) * dt;
   squachX += velocityX * dt;
@@ -485,12 +485,14 @@ function update(dt,t){
 }
 
 function startGame(){
-  score=0;dist=0;gameTime=0;speed=120;lives=3;targetLane=1;squachX=laneX(1);velocityX=0;
+  score=0;dist=0;gameTime=0;speed=120;lives=3;targetLane=1;
+  squachX=laneX(1);velocityX=0;curLane=1;
   rolling=false;rollAngle=0;rollCooldown=0;tunnelZ=0;ammo=maxAmmo;reloading=false;reloadT=0;
   stones=[];obs=[];parts=[];exps=[];spawnT=0;invincible=0;shake=0;
   document.getElementById('reloadBar').style.display='none';document.getElementById('reloadFill').style.width='0%';
   document.getElementById('ss').style.display='none';document.getElementById('gs').style.display='none';
-  state='playing';updateHUD();updateAmmoUI();startMusic();lastT=performance.now();requestAnimationFrame(loop);
+  state='playing';updateHUD();updateAmmoUI();startMusic();
+  lastT=performance.now();requestAnimationFrame(loop);
 }
 
 function gameOver(){
