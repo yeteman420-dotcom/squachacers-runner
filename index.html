@@ -3,397 +3,243 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>SquachAcers: Space Runner Elite</title>
-<link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Exo+2:wght@400;700;900&display=swap" rel="stylesheet">
+<title>SquachAcers: Kinetic Runner</title>
+<link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Exo+2:wght@400;900&display=swap" rel="stylesheet">
 <style>
-  :root{--gold:#C9A84C;--gold-bright:#FFD700;--deep:#050510;--red:#ff3333;--cyan:#00ffff;}
+  :root{--gold:#C9A84C;--cyan:#00ffff;--red:#ff4444;--deep:#050510;}
   *{margin:0;padding:0;box-sizing:border-box;}
-  body{background:var(--deep);font-family:'Exo 2',sans-serif;overflow:hidden;display:flex;align-items:center;justify-content:center;height:100vh;width:100vw;user-select:none;touch-action:none;}
-  #gc{position:relative;width:min(500px,100vw);height:min(700px,100vh);overflow:hidden;box-shadow: 0 0 50px rgba(0,0,0,0.5);border:1px solid #222;}
+  body{background:#000;font-family:'Exo 2',sans-serif;overflow:hidden;display:flex;align-items:center;justify-content:center;height:100vh;}
+  #gc{position:relative;width:min(500px,100vw);height:min(700px,100vh);background:var(--deep);overflow:hidden;border:2px solid #222;}
   canvas{width:100%;height:100%;display:block;}
   
-  /* HUD Styling */
-  #hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;padding:15px 20px 0;pointer-events:none;z-index:10;}
-  .hb{display:flex;flex-direction:column;align-items:center;}
-  .hl{font-family:'Black Ops One',cursive;font-size:10px;letter-spacing:2px;color:var(--gold);opacity:0.8;}
-  .hv{font-family:'Black Ops One',cursive;font-size:24px;color:#fff;text-shadow:0 0 15px var(--gold);}
-  
-  /* Ammo Pips */
-  #ammoRow{display:flex;gap:6px;margin-top:4px;}
-  .pip{width:12px;height:12px;border-radius:2px;background:var(--gold);box-shadow:0 0 8px var(--gold);transform:rotate(45deg);transition: all 0.2s;}
-  .pip.empty{background:#222;box-shadow:none;transform:rotate(0deg);opacity:0.3;}
-  
-  #reloadBar{width:60px;height:4px;background:#111;margin-top:6px;border-radius:2px;display:none;border:1px solid #333;}
-  #reloadFill{height:100%;background:var(--cyan);box-shadow:0 0 10px var(--cyan);width:0%;}
+  /* UI Overlay */
+  .ui-layer{position:absolute;inset:0;pointer-events:none;z-index:10;padding:20px;display:flex;flex-direction:column;justify-content:space-between;}
+  .stats-top{display:flex;justify-content:space-between;font-family:'Black Ops One';}
+  .stat-box{text-align:center;}
+  .stat-label{font-size:10px;color:var(--gold);letter-spacing:2px;}
+  .stat-value{font-size:24px;color:#fff;text-shadow:0 0 10px var(--gold);}
 
   /* Screens */
-  .screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:20;padding:30px;text-align:center;}
-  #ss{background:radial-gradient(circle at center,#1a2a4a 0%,#050510 100%);}
-  #gs{background:rgba(5,5,16,0.98);display:none;}
+  .screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(5,5,16,0.9);z-index:20;text-align:center;padding:20px;pointer-events:all;}
+  .logo{font-family:'Black Ops One';font-size:40px;color:var(--gold);margin-bottom:10px;text-shadow:0 0 20px var(--gold);}
+  .btn{font-family:'Black Ops One';padding:15px 40px;font-size:20px;background:transparent;border:2px solid var(--gold);color:var(--gold);cursor:pointer;transition:0.2s;}
+  .btn:hover{background:var(--gold);color:#000;}
   
-  .logo{font-family:'Black Ops One',cursive;font-size:42px;color:var(--gold-bright);text-shadow:0 0 30px var(--gold);letter-spacing:4px;margin-bottom:5px;}
-  .sub{font-family:'Black Ops One',cursive;font-size:14px;color:#888;letter-spacing:6px;margin-bottom:25px;}
-  .art{font-size:80px;margin:10px 0;filter: drop-shadow(0 0 20px var(--gold));animation:hovering 2.5s ease-in-out infinite;}
-  @keyframes hovering{0%,100%{transform:translateY(0) scale(1);}50%{transform:translateY(-15px) scale(1.05);}}
-  
-  .desc{font-size:13px;color:#aaa;letter-spacing:1px;margin-bottom:30px;line-height:1.8;background:rgba(255,255,255,0.03);padding:15px;border-radius:8px;}
-  .btn{font-family:'Black Ops One',cursive;font-size:18px;letter-spacing:3px;padding:15px 45px;border:2px solid var(--gold);background:rgba(201,168,76,0.1);color:var(--gold-bright);cursor:pointer;transition:all 0.3s;text-transform:uppercase;}
-  .btn:hover{background:var(--gold);color:#000;box-shadow:0 0 20px var(--gold);}
-  .btn:active{transform:scale(0.95);}
-
-  /* Leaderboard Styling */
-  .lb-row{display:flex;justify-content:space-between;padding:6px 12px;margin-bottom:4px;font-family:'Black Ops One',cursive;font-size:13px;background:rgba(255,255,255,0.03);border-radius:4px;}
-  .lb-row.gold{border-left:4px solid var(--gold-bright);color:var(--gold-bright);}
-  .hl2{background:rgba(201,168,76,0.2);border:1px solid var(--gold);}
-  
-  .popup{position:absolute;font-family:'Black Ops One',cursive;font-size:20px;color:var(--cyan);pointer-events:none;animation:floatUp 0.8s ease-out forwards;z-index:30;text-shadow:0 0 10px var(--cyan);}
-  @keyframes floatUp{0%{opacity:1;transform:translateY(0);}100%{opacity:0;transform:translateY(-60px);}}
-  
-  #ni{background:#000;border:2px solid var(--gold);color:#fff;padding:10px;text-align:center;font-family:'Black Ops One';margin-bottom:10px;width:200px;}
+  #ammo-bar{display:flex;gap:5px;margin-top:5px;}
+  .pip{width:15px;height:6px;background:var(--gold);box-shadow:0 0 5px var(--gold);transition:0.3s;}
+  .pip.empty{opacity:0.2;transform:scale(0.8);}
 </style>
 </head>
 <body>
+
 <div id="gc">
   <canvas id="c"></canvas>
-  <div id="hud">
-    <div class="hb"><div class="hl">SCORE</div><div class="hv" id="sc">0</div></div>
-    <div class="hb">
-      <div class="hl">STONES</div>
-      <div id="ammoRow"></div>
-      <div id="reloadBar"><div id="reloadFill"></div></div>
+  
+  <div class="ui-layer">
+    <div class="stats-top">
+      <div class="stat-box"><div class="stat-label">SCORE</div><div class="stat-value" id="score-val">0</div></div>
+      <div class="stat-box">
+        <div class="stat-label">ENERGY</div>
+        <div id="ammo-bar"></div>
+      </div>
+      <div class="stat-box"><div class="stat-label">DIST</div><div class="stat-value" id="dist-val">0m</div></div>
     </div>
-    <div class="hb"><div class="hl">DIST</div><div class="hv" id="dc">0m</div></div>
   </div>
 
-  <div class="screen" id="ss">
+  <div id="start-screen" class="screen">
     <div class="logo">SQUACHACERS</div>
-    <div class="sub">SPACE RUNNER</div>
-    <div class="art">🦶</div>
-    <div class="desc">
-      <span style="color:var(--cyan)">KINETIC MOVEMENT ENABLED</span><br>
-      SWIPE SIDES TO SLINGSHOT<br>
-      SWIPE UP TO BARREL ROLL<br>
-      TAP TO BLAST OBSTACLES
-    </div>
-    <button class="btn" id="startBtn">Initiate</button>
-    <div id="slb" style="width:100%;max-width:320px;margin-top:20px;"></div>
+    <p style="color:#aaa;margin-bottom:30px;letter-spacing:2px;">KINETIC SPACE SLINGSHOT</p>
+    <button class="btn" onclick="startGame()">LAUNCH</button>
   </div>
 
-  <div class="screen" id="gs">
-    <div style="font-family:'Black Ops One';color:var(--red);font-size:32px;">SYSTEM CRASH</div>
-    <div class="hv" id="fs" style="font-size:50px;margin:10px 0;">0</div>
-    <div id="ne" style="display:none;flex-direction:column;align-items:center;">
-      <input id="ni" type="text" maxlength="10" placeholder="ACER NAME">
-      <button class="btn" id="saveBtn" style="padding:8px 20px;font-size:14px;">Record Score</button>
-    </div>
-    <div id="lb" style="width:100%;max-width:320px;margin:20px 0;"></div>
-    <button class="btn" id="retryBtn">Reboot</button>
+  <div id="over-screen" class="screen" style="display:none;">
+    <div class="logo" style="color:var(--red);">CRASHED</div>
+    <div class="stat-value" id="final-score" style="font-size:40px;margin-bottom:20px;">0</div>
+    <button class="btn" onclick="startGame()">REBOOT</button>
   </div>
 </div>
 
-<script type="module">
-  import{initializeApp}from"https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-  import{getDatabase,ref,push,query,orderByChild,limitToLast,onValue}from"https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
-  const db=getDatabase(initializeApp({apiKey:"AIzaSyCSBF47ibk5F0TCZ1DvwZb7-0cG1BImDd4",authDomain:"squachacers.firebaseapp.com",databaseURL:"https://squachacers-default-rtdb.firebaseio.com",projectId:"squachacers",storageBucket:"squachacers.firebasestorage.app",messagingSenderId:"305836513755",appId:"1:305836513755:web:2d9a412923e817a6ee2ffe"}));
-  window._fbL=cb=>onValue(query(ref(db,'runner_scores'),orderByChild('score'),limitToLast(10)),s=>{const d=s.val();cb(d?Object.values(d).sort((a,b)=>b.score-a.score):[]);});
-  window._fbS=(n,s,d)=>push(ref(db,'runner_scores'),{name:n.toUpperCase().trim()||'ACER',score:s,dist:d,date:Date.now()});
-  document.dispatchEvent(new Event('fbReady'));
-</script>
-
 <script>
-const canvas=document.getElementById('c');
-const ctx=canvas.getContext('2d');
-const W=500,H=700;
-canvas.width=W;canvas.height=H;
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const W = 500, H = 700;
+canvas.width = W; canvas.height = H;
 
-/* PHYSICS CONSTANTS - THE "10X" SAUCE */
-const LANES=3,LANE_W=W/LANES,SQUACH_BASE_Y=H-120;
-const SPRING_TENSION = 180; // Snappiness
-const DAMPING = 14;        // Friction/Bounce control
-const IMPULSE_FORCE = 850; // The "kick" on swipe
-const TILT_MAX = 0.45;     // Max body lean
+// --- CONFIG ---
+const LANES = 3;
+const LANE_W = W / LANES;
+const SPRING = 160;   // Tension
+const DAMP = 15;      // Friction
+const PUNCH = 900;    // Swipe Impulse
 
-function laneX(l){return LANE_W*l+LANE_W/2;}
+// --- STATE ---
+let state = 'menu';
+let score = 0, dist = 0, speed = 150;
+let targetLane = 1;
+let curX = W/2, velX = 0; // Physics position
+let ammo = 5, stones = [], obs = [];
+let lastT = 0, spawnT = 0;
 
-/* GAME STATE */
-let state='start',score=0,dist=0,hiScore=parseInt(localStorage.getItem('sr2_hs')||'0');
-let gameTime=0,speed=0;
-let targetLane=1;
-let squachX=laneX(1),velocityX=0; // Horizontal physical position
-let rolling=false,rollAngle=0,rollDir=0,rollCooldown=0;
-let ammo=5,maxAmmo=5,reloading=false,reloadT=0;
-let stones=[],obs=[],parts=[],exps=[];
-let spawnT=0,lastT=0,shake=0,invincible=0,lives=3;
-let globalScores=[];
-let touchStartX=0,touchStartY=0,touchMoved=false;
+// --- INPUT ---
+let touchX = 0, touchY = 0;
 
-/* SFX ENGINE */
-let AC=null,mNodes={},mPlaying=false;
-function getAC(){if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();return AC;}
-function tone(f,type,dur,vol=0.2,delay=0){const ac=getAC(),o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);o.type=type;o.frequency.setValueAtTime(f,ac.currentTime+delay);g.gain.setValueAtTime(0,ac.currentTime+delay);g.gain.linearRampToValueAtTime(vol,ac.currentTime+delay+0.01);g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+delay+dur);o.start(ac.currentTime+delay);o.stop(ac.currentTime+delay+dur+0.05);}
-function noise(dur,vol){const ac=getAC(),buf=ac.createBuffer(1,ac.sampleRate*dur,ac.sampleRate),d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1);const s=ac.createBufferSource(),g=ac.createGain();s.buffer=buf;s.connect(g);g.connect(ac.destination);g.gain.setValueAtTime(vol,ac.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+dur);s.start();s.stop(ac.currentTime+dur+0.05);}
-
-function sfxThrow(){tone(400,'triangle',0.1);tone(200,'sine',0.1,0.1,0.05);}
-function sfxHit(){noise(0.1,0.3);}
-function sfxExplode(){noise(0.4,0.5);}
-function sfxLane(){tone(150,'sine',0.15,0.3);}
-function sfxRoll(){tone(600,'sawtooth',0.3,0.1);}
-
-/* INPUT - THE KINETIC ENGINE */
-canvas.addEventListener('touchstart',e=>{
-  e.preventDefault();
-  touchStartX=e.touches[0].clientX;
-  touchStartY=e.touches[0].clientY;
-  touchMoved=false;
-},{passive:false});
-
-canvas.addEventListener('touchmove',e=>{
-  e.preventDefault();
-  if(state!=='playing')return;
-  const dx=e.touches[0].clientX-touchStartX;
-  const dy=e.touches[0].clientY-touchStartY;
-
-  if(!touchMoved && (Math.abs(dx)>20 || Math.abs(dy)>20)){
-    touchMoved=true;
-    if(dy < -30) doRoll();
-    else if(Math.abs(dx) > Math.abs(dy)){
-      const prevLane = targetLane;
-      if(dx > 0 && targetLane < LANES-1) targetLane++;
-      else if(dx < 0 && targetLane > 0) targetLane--;
-      
-      if(prevLane !== targetLane){
-        // Inject physical impulse for "fun" movement
-        velocityX += (dx > 0 ? 1 : -1) * IMPULSE_FORCE;
-        sfxLane();
-      }
-    }
-  }
-},{passive:false});
-
-canvas.addEventListener('touchend',e=>{
-  if(state==='playing' && !touchMoved) throwStone();
+window.addEventListener('touchstart', e => {
+  touchX = e.touches[0].clientX;
+  touchY = e.touches[0].clientY;
 });
 
-document.addEventListener('keydown',e=>{
-  if(state!=='playing')return;
-  if(e.key==='ArrowLeft' && targetLane > 0){ targetLane--; velocityX -= IMPULSE_FORCE; sfxLane(); }
-  if(e.key==='ArrowRight' && targetLane < LANES-1){ targetLane++; velocityX += IMPULSE_FORCE; sfxLane(); }
-  if(e.key==='ArrowUp') doRoll();
-  if(e.key===' ') throwStone();
+window.addEventListener('touchend', e => {
+  if(state !== 'play') return;
+  const dx = e.changedTouches[0].clientX - touchX;
+  const dy = e.changedTouches[0].clientY - touchY;
+
+  if(Math.abs(dx) > 30) {
+    // Slingshot Movement
+    if(dx > 0 && targetLane < 2) { targetLane++; velX += PUNCH; }
+    else if(dx < 0 && targetLane > 0) { targetLane--; velX -= PUNCH; }
+  } else if (dy > -20 && dy < 20) {
+    // Tap to Shoot
+    fire();
+  }
 });
 
-/* CORE LOGIC */
-function doRoll(){
-  if(rolling || rollCooldown > 0) return;
-  rolling=true; rollAngle=0; rollCooldown=1.2;
-  invincible=0.6; sfxRoll();
+// Arrow keys for desktop testing
+window.addEventListener('keydown', e => {
+  if(state !== 'play') return;
+  if(e.key === 'ArrowLeft' && targetLane > 0) { targetLane--; velX -= PUNCH; }
+  if(e.key === 'ArrowRight' && targetLane < 2) { targetLane++; velX += PUNCH; }
+  if(e.key === ' ') fire();
+});
+
+function fire() {
+  if(ammo <= 0) return;
+  ammo--;
+  stones.push({x: curX, y: H-120, v: -800});
+  updateAmmoUI();
 }
 
-function throwStone(){
-  if(ammo <= 0 || reloading) return;
-  ammo--; updateAmmoUI(); sfxThrow();
-  stones.push({x:squachX, y:squachY-20, vy:-700, trail:[]});
-  if(ammo===0){ reloading=true; reloadT=0; document.getElementById('reloadBar').style.display='block'; }
-}
-
-function update(dt, t){
-  speed = 140 + (gameTime * 10);
-  gameTime += dt;
-  dist += speed * dt * 0.1;
-  score = Math.floor(dist * 2);
-
-  // --- SPRING PHYSICS ENGINE ---
-  const tx = laneX(targetLane);
-  const force = (tx - squachX) * SPRING_TENSION; // Hooke's Law
-  const friction = velocityX * DAMPING;         // Damping
-  const accel = (force - friction);
-  
-  velocityX += accel * dt;
-  squachX += velocityX * dt;
-
-  // Barrel Roll Logic
-  if(rolling){
-    rollAngle += dt * 12;
-    if(rollAngle >= Math.PI*2){ rolling=false; rollAngle=0; }
-  }
-  if(rollCooldown > 0) rollCooldown -= dt;
-  if(invincible > 0) invincible -= dt;
-
-  // Reload Logic
-  if(reloading){
-    reloadT += dt;
-    document.getElementById('reloadFill').style.width = (reloadT/2.5 * 100) + '%';
-    if(reloadT >= 2.5){ ammo=maxAmmo; reloading=false; updateAmmoUI(); document.getElementById('reloadBar').style.display='none'; }
-  }
-
-  // Spawning
-  spawnT -= dt;
-  if(spawnT <= 0){ spawnObstacle(); spawnT = Math.max(0.3, 1.2 - (gameTime*0.02)); }
-
-  // Obstacle Processing
-  for(let i=obs.length-1; i>=0; i--){
-    const o = obs[i]; o.y += speed * dt;
-    if(o.y > H+50) { obs.splice(i,1); continue; }
-    
-    // Collision
-    const dx = Math.abs(o.x - squachX);
-    const dy = Math.abs(o.y - squachY);
-    if(dx < 35 && dy < 40 && invincible <= 0){
-      if(o.type === 'powerup'){
-        ammo = maxAmmo; sfxLane(); obs.splice(i,1);
-      } else {
-        lives--; invincible = 1.5; shake = 0.5; sfxHit();
-        obs.splice(i,1);
-        if(lives <= 0) gameOver();
-      }
-    }
-  }
-
-  // Stone Processing
-  for(let i=stones.length-1; i>=0; i--){
-    const s = stones[i]; s.y += s.vy * dt;
-    if(s.y < -50) { stones.splice(i,1); continue; }
-    for(let j=obs.length-1; j>=0; j--){
-      const o = obs[j];
-      if(o.type !== 'powerup' && Math.hypot(s.x-o.x, s.y-o.y) < 40){
-        sfxExplode(); spawnExp(o.x, o.y, 40, o.color);
-        obs.splice(j,1); stones.splice(i,1);
-        score += 100; popup(o.x, o.y, 100);
-        break;
-      }
-    }
-  }
-  
-  if(shake > 0) shake -= dt;
-  updateHUD();
-}
-
-function spawnObstacle(){
-  const lane = Math.floor(Math.random()*LANES);
-  const isPower = Math.random() < 0.1;
-  obs.push({
-    x: laneX(lane), y: -50, 
-    type: isPower ? 'powerup' : 'alien',
-    color: isPower ? '#00ffff' : '#ff4444',
-    size: 25 + Math.random()*15
-  });
-}
-
-/* RENDERING */
-function draw(t){
-  ctx.fillStyle='#050510'; ctx.fillRect(0,0,W,H);
-  
-  // Grid / Tunnel effect
-  ctx.strokeStyle = 'rgba(201,168,76,0.15)';
-  for(let i=0; i<=LANES; i++){
-    ctx.beginPath(); ctx.moveTo(i*LANE_W, 0); ctx.lineTo(i*LANE_W, H); ctx.stroke();
-  }
-
-  // Draw Squach
-  ctx.save();
-  const tilt = Math.max(-TILT_MAX, Math.min(TILT_MAX, velocityX * 0.0008));
-  ctx.translate(squachX, squachY);
-  if(rolling) ctx.rotate(rollAngle);
-  else ctx.rotate(tilt);
-
-  if(invincible > 0 && Math.floor(t*10)%2===0) ctx.globalAlpha = 0.3;
-
-  // Squach Body
-  ctx.shadowBlur = 15; ctx.shadowColor = varColor('--gold');
-  ctx.fillStyle = '#4a3522'; ctx.beginPath(); ctx.arc(0, 0, 25, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#FFD700'; ctx.beginPath(); ctx.arc(-8, -5, 4, 0, Math.PI*2); ctx.arc(8, -5, 4, 0, Math.PI*2); ctx.fill();
-  ctx.restore();
-
-  // Draw Obstacles
-  obs.forEach(o => {
-    ctx.shadowBlur = 10; ctx.shadowColor = o.color;
-    ctx.fillStyle = o.color;
-    ctx.beginPath(); 
-    if(o.type==='powerup') ctx.rect(o.x-15, o.y-15, 30, 30);
-    else ctx.arc(o.x, o.y, 20, 0, Math.PI*2);
-    ctx.fill();
-  });
-
-  // Stones
-  stones.forEach(s => {
-    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(s.x, s.y, 6, 0, Math.PI*2); ctx.fill();
-  });
-}
-
-function varColor(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
-
-function updateAmmoUI(){
-  const r = document.getElementById('ammoRow'); r.innerHTML = '';
-  for(let i=0; i<maxAmmo; i++){
-    const p = document.createElement('div'); p.className = 'pip' + (i<ammo?'':' empty');
-    r.appendChild(p);
+function updateAmmoUI() {
+  const bar = document.getElementById('ammo-bar');
+  bar.innerHTML = '';
+  for(let i=0; i<5; i++) {
+    const p = document.createElement('div');
+    p.className = 'pip' + (i < ammo ? '' : ' empty');
+    bar.appendChild(p);
   }
 }
 
-function updateHUD(){
-  document.getElementById('sc').textContent = score;
-  document.getElementById('dc').textContent = Math.floor(dist) + 'm';
-}
-
-function popup(x,y,v){
-  const el = document.createElement('div'); el.className='popup'; el.textContent='+'+v;
-  el.style.left = x + 'px'; el.style.top = y + 'px';
-  document.getElementById('gc').appendChild(el);
-  setTimeout(()=>el.remove(), 800);
-}
-
-function spawnExp(x,y,r,c){
-  // Simple particle flare
-}
-
-function gameOver(){
-  state='gameover'; document.getElementById('gs').style.display='flex';
-  document.getElementById('fs').textContent = score;
-  if(score > hiScore) { hiScore=score; localStorage.setItem('sr2_hs', hiScore); document.getElementById('ne').style.display='flex'; }
-  renderLB('lb');
-}
-
-function startGame(){
-  state='playing'; score=0; dist=0; gameTime=0; lives=3; targetLane=1; ammo=maxAmmo;
-  obs=[]; stones=[];
-  document.getElementById('ss').style.display='none';
-  document.getElementById('gs').style.display='none';
+function startGame() {
+  score = 0; dist = 0; speed = 180;
+  targetLane = 1; curX = W/2; velX = 0;
+  ammo = 5; stones = []; obs = [];
+  state = 'play';
+  document.getElementById('start-screen').style.display = 'none';
+  document.getElementById('over-screen').style.display = 'none';
   updateAmmoUI();
   lastT = performance.now();
   requestAnimationFrame(loop);
 }
 
-function loop(ts){
-  if(state!=='playing') return;
-  const dt = Math.min((ts - lastT)/1000, 0.05);
-  lastT = ts;
-  update(dt, ts/1000);
-  draw(ts/1000);
+function gameOver() {
+  state = 'menu';
+  document.getElementById('over-screen').style.display = 'flex';
+  document.getElementById('final-score').innerText = Math.floor(score);
+}
+
+function loop(t) {
+  if(state !== 'play') return;
+  const dt = Math.min((t - lastT) / 1000, 0.1);
+  lastT = t;
+
+  // --- PHYSICS ENGINE ---
+  const tx = (targetLane * LANE_W) + (LANE_W / 2);
+  const force = (tx - curX) * SPRING;
+  const resistance = velX * DAMP;
+  velX += (force - resistance) * dt;
+  curX += velX * dt;
+
+  // Progression
+  speed += 2 * dt;
+  dist += speed * dt * 0.1;
+  score = dist * 2;
+
+  // Spawning
+  spawnT -= dt;
+  if(spawnT <= 0) {
+    obs.push({
+      x: (Math.floor(Math.random()*3) * LANE_W) + LANE_W/2,
+      y: -50,
+      r: 20 + Math.random()*20,
+      c: Math.random() > 0.1 ? '#ff4444' : '#00ffff' // Red = Enemy, Cyan = Ammo
+    });
+    spawnT = Math.max(0.4, 1.2 - (speed/500));
+  }
+
+  // Updates
+  stones.forEach((s, i) => {
+    s.y += s.v * dt;
+    if(s.y < -20) stones.splice(i, 1);
+  });
+
+  obs.forEach((o, i) => {
+    o.y += speed * dt;
+    // Collision with Player
+    const d = Math.hypot(o.x - curX, o.y - (H-120));
+    if(d < o.r + 20) {
+      if(o.c === '#00ffff') { ammo = Math.min(5, ammo + 2); updateAmmoUI(); obs.splice(i, 1); }
+      else { gameOver(); }
+    }
+    // Collision with Stones
+    stones.forEach((s, si) => {
+      if(Math.hypot(o.x - s.x, o.y - s.y) < o.r + 10) {
+        obs.splice(i, 1);
+        stones.splice(si, 1);
+        dist += 50;
+      }
+    });
+    if(o.y > H + 50) obs.splice(i, 1);
+  });
+
+  // --- RENDER ---
+  ctx.fillStyle = '#050510';
+  ctx.fillRect(0,0,W,H);
+
+  // Lanes
+  ctx.strokeStyle = 'rgba(201,168,76,0.2)';
+  for(let i=1; i<3; i++) {
+    ctx.beginPath(); ctx.moveTo(i*LANE_W, 0); ctx.lineTo(i*LANE_W, H); ctx.stroke();
+  }
+
+  // Player (Squach)
+  ctx.save();
+  ctx.translate(curX, H-120);
+  ctx.rotate(velX * 0.0005); // Dynamic leaning
+  ctx.shadowBlur = 15; ctx.shadowColor = '#C9A84C';
+  ctx.fillStyle = '#C9A84C';
+  ctx.beginPath(); ctx.arc(0, 0, 25, 0, Math.PI*2); ctx.fill();
+  // Eyes
+  ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.arc(-8, -5, 3, 0, Math.PI*2); ctx.arc(8, -5, 3, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  // Projectiles
+  ctx.fillStyle = '#fff';
+  stones.forEach(s => {
+    ctx.beginPath(); ctx.arc(s.x, s.y, 5, 0, Math.PI*2); ctx.fill();
+  });
+
+  // Obstacles
+  obs.forEach(o => {
+    ctx.shadowBlur = 10; ctx.shadowColor = o.c;
+    ctx.fillStyle = o.c;
+    ctx.beginPath(); ctx.arc(o.x, o.y, o.r, 0, Math.PI*2); ctx.fill();
+  });
+
+  document.getElementById('score-val').innerText = Math.floor(score);
+  document.getElementById('dist-val').innerText = Math.floor(dist) + 'm';
+
   requestAnimationFrame(loop);
 }
-
-function renderLB(id){
-  const el = document.getElementById(id);
-  el.innerHTML = '<div style="color:var(--gold); font-size:10px; margin-bottom:10px;">TOP ACERS</div>';
-  globalScores.slice(0, 5).forEach((s, i) => {
-    el.innerHTML += `<div class="lb-row ${i===0?'gold':''}"><span>${s.name}</span><span>${s.score}</span></div>`;
-  });
-}
-
-document.getElementById('startBtn').onclick = startGame;
-document.getElementById('retryBtn').onclick = startGame;
-document.getElementById('saveBtn').onclick = () => {
-  const n = document.getElementById('ni').value;
-  if(window._fbS) window._fbS(n, score, dist);
-  document.getElementById('ne').style.display='none';
-};
-
-document.addEventListener('fbReady', () => {
-  window._fbL(d => { globalScores = d; renderLB('slb'); });
-});
-
-// Initial draw
-draw(0);
 </script>
 </body>
 </html>
