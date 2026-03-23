@@ -130,7 +130,6 @@ let spawnT=0,lastT=0,shake=0,invincible=0,lives=3;
 let globalScores=[];
 let touchStartX=0,touchStartY=0,touchMoved=false,touchDir='';
 
-// RESTORED STAR AND NEBULA BACKGROUND
 const stars=[];
 for(let i=0;i<180;i++)stars.push({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.8+0.2,spd:2+Math.random()*6,b:0.3+Math.random()*0.7});
 const nebs=[];
@@ -178,7 +177,6 @@ function renderLB(id,hl=null){
 }
 document.addEventListener('fbReady',()=>{if(window._fbL)window._fbL(s=>{globalScores=s;renderLB('lb');renderLB('slb');});});
 
-// RESTORED DETAILED SPAWNING LOGIC
 function spawnObs(){
   const t=Math.random(),lane=Math.floor(Math.random()*LANES),spd=speed*(0.8+Math.random()*0.4);
   if(t<0.5){
@@ -214,7 +212,6 @@ function spawnParts(x,y,color,n=12){for(let i=0;i<n;i++){const a=Math.random()*M
 function spawnExp(x,y,r,color){exps.push({x,y,r,maxR:r,life:1,color});}
 function popup(x,y,val){const el=document.createElement('div');el.className='popup';el.textContent=typeof val==='number'?'+'+val:val;const rc=canvas.getBoundingClientRect();el.style.left=(rc.left+x*(rc.width/W))+'px';el.style.top=(rc.top+y*(rc.height/H))+'px';document.body.appendChild(el);setTimeout(()=>el.remove(),800);}
 
-// RESTORED TOUCH INPUT LOGIC
 canvas.addEventListener('touchstart',e=>{e.preventDefault();if(state!=='playing')return;touchStartX=e.touches[0].clientX;touchStartY=e.touches[0].clientY;touchMoved=false;touchDir='';},{passive:false});
 
 canvas.addEventListener('touchmove',e=>{
@@ -281,7 +278,6 @@ function throwStone(){
 function updateAmmoUI(){const row=document.getElementById('ammoRow');row.innerHTML='';for(let i=0;i<maxAmmo;i++){const p=document.createElement('div');p.className='pip'+(i<ammo?'':' empty');row.appendChild(p);}}
 function updateHUD(){document.getElementById('sc').textContent=score;document.getElementById('dc').textContent=Math.floor(dist)+'m';}
 
-// RESTORED BACKGROUND RENDER
 function drawBg(t){
   ctx.fillStyle='#020208';ctx.fillRect(0,0,W,H);
   for(const n of nebs){const g=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,n.r);g.addColorStop(0,`hsla(${n.hue},80%,60%,${n.a*1.5})`);g.addColorStop(1,'transparent');ctx.fillStyle=g;ctx.beginPath();ctx.arc(n.x,n.y,n.r,0,Math.PI*2);ctx.fill();}
@@ -314,7 +310,6 @@ function drawLanes(t){
   ctx.setLineDash([]);
 }
 
-// RESTORED FULL SQUACH ARTWORK LOGIC
 function drawSquach(t){
   const bob=rolling?0:Math.sin(t*6)*3;
   const scaleX=rolling?Math.cos(rollAngle)*0.5+0.5:1;
@@ -356,7 +351,6 @@ function drawSquach(t){
   for(let l=0;l<LANES;l++){ctx.globalAlpha=l===curLane?1:0.28;ctx.fillStyle=l===curLane?'#FFD700':'#555';ctx.beginPath();ctx.arc(laneX(l),H-10,5,0,Math.PI*2);ctx.fill();}
 }
 
-// RESTORED DETAILED OBSTACLE ARTWORK
 function drawObs(o,t){
   ctx.save();ctx.translate(o.x,o.y+Math.sin((o.wobble||0)+t*2.5)*3);
   if(o.type==='alien'){
@@ -431,7 +425,6 @@ function update(dt,t){
   for(const s of stars){s.y+=s.spd*(speed/180)*dt*60;if(s.y>H+5)s.y=-5;}
   for(const n of nebs){n.y+=n.spd*(speed/180)*dt*30;if(n.y>H+n.r)n.y=-n.r;}
 
-  // KINETIC SPRING ENGINE
   const targetX = laneX(targetLane);
   const force = (targetX - squachX) * TENSION;
   const resistance = velocityX * DAMPING;
