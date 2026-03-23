@@ -276,7 +276,7 @@ function throwStone(){
 }
 
 function updateAmmoUI(){const row=document.getElementById('ammoRow');row.innerHTML='';for(let i=0;i<maxAmmo;i++){const p=document.createElement('div');p.className='pip'+(i<ammo?'':' empty');row.appendChild(p);}}
-function updateHUD(){document.getElementById('sc').textContent=score;document.getElementById('dc').textContent=Math.floor(dist)+'m';}
+function updateHUD(){document.getElementById('sc').textContent=Math.floor(score);document.getElementById('dc').textContent=Math.floor(dist)+'m';}
 
 function drawBg(t){
   ctx.fillStyle='#020208';ctx.fillRect(0,0,W,H);
