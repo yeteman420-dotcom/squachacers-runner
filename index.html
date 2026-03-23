@@ -69,7 +69,7 @@
     <div class="art">🦶</div>
     <div class="desc">
       SQUACH BLASTS THROUGH DEEP SPACE<br>
-      <span style="color:#C9A84C;">← SWIPE LEFT/RIGHT → CHANGE LANE</span><br>
+      <span style="color:#C9A84C;">← SWIPE LEFT/RIGHT → SLINGSHOT</span><br>
       <span style="color:#00ffff;">↑ SWIPE UP → BARREL ROLL DODGE</span><br>
       <span style="color:#FFD700;">TAP → THROW · 5 STONES · AUTO RELOAD</span>
     </div>
@@ -109,13 +109,19 @@ const ctx=canvas.getContext('2d');
 const W=500,H=700;
 canvas.width=W;canvas.height=H;
 
-const LANES=3,LANE_W=W/LANES,SQUACH_BASE_Y=H-120;
+const LANES=3,LANE_W=W/LANES;
+const SQUACH_BASE_Y=H-120;
+const squachY=SQUACH_BASE_Y;
 function laneX(l){return LANE_W*l+LANE_W/2;}
+
+const SPRING_TENSION=180;
+const DAMPING=15;
+const PUNCH=900;
 
 let state='start',score=0,dist=0,hiScore=parseInt(localStorage.getItem('sr2_hs')||'0');
 let gameTime=0,speed=0;
-let curLane=1,targetLane=1;
-let squachX=laneX(1),squachY=SQUACH_BASE_Y,laneSlideVel=0;
+let targetLane=1,curLane=1;
+let squachX=laneX(1),velocityX=0;
 let tunnelZ=0;
 let rolling=false,rollAngle=0,rollDir=0,rollCooldown=0;
 const ROLL_DURATION=0.5,ROLL_COOLDOWN=1.2;
@@ -219,21 +225,11 @@ canvas.addEventListener('touchmove',e=>{
       touchDir='up';doRoll();
     } else if(Math.abs(dx)>Math.abs(dy)){
       touchDir='x';
-      const kick=dx>0?1:-1;
-      laneSlideVel+=kick*420;
+      const direction=dx>0?1:-1;
+      const prevLane=targetLane;
       if(dx>0&&targetLane<LANES-1)targetLane++;
       else if(dx<0&&targetLane>0)targetLane--;
-      sfxLane();
-      touchStartX=e.touches[0].clientX;
-    }
-  } else if(touchMoved&&touchDir==='x'){
-    const dx2=e.touches[0].clientX-touchStartX;
-    if(Math.abs(dx2)>22){
-      const kick=dx2>0?1:-1;
-      laneSlideVel+=kick*320;
-      if(dx2>0&&targetLane<LANES-1)targetLane++;
-      else if(dx2<0&&targetLane>0)targetLane--;
-      sfxLane();
+      if(prevLane!==targetLane){velocityX+=direction*PUNCH;sfxLane();}
       touchStartX=e.touches[0].clientX;
     }
   }
@@ -243,8 +239,8 @@ canvas.addEventListener('touchend',e=>{e.preventDefault();if(state==='playing'&&
 
 document.addEventListener('keydown',e=>{
   if(state!=='playing')return;
-  if(e.key==='ArrowLeft'&&targetLane>0){targetLane--;laneSlideVel-=400;sfxLane();}
-  if(e.key==='ArrowRight'&&targetLane<LANES-1){targetLane++;laneSlideVel+=400;sfxLane();}
+  if(e.key==='ArrowLeft'&&targetLane>0){targetLane--;velocityX-=PUNCH;sfxLane();}
+  if(e.key==='ArrowRight'&&targetLane<LANES-1){targetLane++;velocityX+=PUNCH;sfxLane();}
   if(e.key==='ArrowUp'||e.key==='w')doRoll();
   if(e.key===' ')throwStone();
 });
@@ -265,8 +261,7 @@ function throwStone(){
   let best=null,bestD=Infinity;
   for(const o of obs){
     if(o.type==='powerup')continue;
-    const laneDiff=Math.abs(o.lane-curLane);
-    if(laneDiff>1)continue;
+    if(Math.abs(o.lane-curLane)>1)continue;
     const d=Math.hypot(o.x-squachX,o.y-squachY);
     if(d<bestD){bestD=d;best=o;}
   }
@@ -277,7 +272,7 @@ function throwStone(){
 }
 
 function updateAmmoUI(){const row=document.getElementById('ammoRow');row.innerHTML='';for(let i=0;i<maxAmmo;i++){const p=document.createElement('div');p.className='pip'+(i<ammo?'':' empty');row.appendChild(p);}}
-function updateHUD(){document.getElementById('sc').textContent=score;document.getElementById('dc').textContent=Math.floor(dist)+'m';}
+function updateHUD(){document.getElementById('sc').textContent=Math.floor(score);document.getElementById('dc').textContent=Math.floor(dist)+'m';}
 
 function drawBg(t){
   ctx.fillStyle='#020208';ctx.fillRect(0,0,W,H);
@@ -319,7 +314,7 @@ function drawSquach(t){
   const bob=rolling?0:Math.sin(t*6)*3;
   const scaleX=rolling?Math.cos(rollAngle)*0.5+0.5:1;
   const scaleY=rolling?1.2-Math.abs(Math.cos(rollAngle))*0.4:1;
-  const tilt=rolling?rollDir*rollAngle*1.5:(targetLane-curLane)*0.25;
+  const tilt=rolling?rollDir*rollAngle*1.5:velocityX*0.0007;
   const flicker=invincible>0&&!rolling&&Math.floor(t*14)%2===0;
   ctx.save();ctx.translate(squachX,squachY+bob);ctx.rotate(tilt);ctx.scale(scaleX,scaleY);ctx.globalAlpha=flicker?0.3:1;
   for(let i=0;i<12;i++){
@@ -355,7 +350,7 @@ function drawSquach(t){
   ctx.globalAlpha=1;
   for(let l=0;l<LANES;l++){ctx.globalAlpha=l===curLane?1:0.28;ctx.fillStyle=l===curLane?'#FFD700':'#555';ctx.beginPath();ctx.arc(laneX(l),H-10,5,0,Math.PI*2);ctx.fill();}
   ctx.globalAlpha=1;
-  if(rollCooldown>0){const pct=1-(rollCooldown/ROLL_COOLDOWN);ctx.fillStyle='rgba(0,255,255,0.12)';ctx.fillRect(0,H-26,W,6);ctx.fillStyle='#00ffff';ctx.fillRect(0,H-26,W*pct,6);}
+  if(rollCooldown>0){const pct=1-(rollCooldown/ROLL_COOLDOWN);ctx.fillStyle='rgba(0,255,255,0.1)';ctx.fillRect(0,H-26,W,5);ctx.fillStyle='#00ffff';ctx.fillRect(0,H-26,W*pct,5);}
 }
 
 function drawObs(o,t){
@@ -428,20 +423,18 @@ function drawExp(e){ctx.save();ctx.globalAlpha=e.life*0.35;ctx.strokeStyle=e.col
 function drawSpeedBar(){const bw=W-40,pct=Math.min(1,(speed-120)/500);ctx.fillStyle='rgba(255,255,255,0.04)';ctx.fillRect(20,H-22,bw,3);const g=ctx.createLinearGradient(20,0,20+bw,0);g.addColorStop(0,'#C9A84C');g.addColorStop(1,'#ff4444');ctx.fillStyle=g;ctx.fillRect(20,H-22,bw*pct,3);}
 
 function update(dt,t){
-  speed=120+gameTime*13;gameTime+=dt;dist+=speed*dt/10;score=Math.floor(dist*2+gameTime*5);tunnelZ+=speed*dt;
+  if(isNaN(dt)||dt>0.1)dt=0.016;
+  speed=120+gameTime*13;gameTime+=dt;dist+=speed*dt/10;score+=dist*0.002+gameTime*0.005;tunnelZ+=speed*dt;
   for(const s of stars){s.y+=s.spd*(speed/180)*dt*60;if(s.y>H+5)s.y=-5;}
   for(const n of nebs){n.y+=n.spd*(speed/180)*dt*30;if(n.y>H+n.r)n.y=-n.r;}
 
-  // Free floating with center repulsion
   const targetX=laneX(targetLane);
-  const diffX=targetX-squachX;
-  laneSlideVel+=diffX*22*dt;
-  laneSlideVel*=Math.pow(0.004,dt);
-  const centerDist=squachX-W/2;
-  const repulse=centerDist*18*dt;
-  laneSlideVel+=repulse;
-  squachX+=laneSlideVel*dt;
-  squachX=Math.max(25,Math.min(W-25,squachX));
+  const force=(targetX-squachX)*SPRING_TENSION;
+  const resistance=velocityX*DAMPING;
+  velocityX+=(force-resistance)*dt;
+  squachX+=velocityX*dt;
+  if(squachX<20){squachX=20;velocityX=Math.abs(velocityX)*0.4;}
+  if(squachX>W-20){squachX=W-20;velocityX=-Math.abs(velocityX)*0.4;}
   curLane=Math.max(0,Math.min(LANES-1,Math.round((squachX-LANE_W/2)/LANE_W)));
 
   if(rolling){rollAngle+=dt*(Math.PI*2/ROLL_DURATION);if(rollAngle>=Math.PI*2){rolling=false;rollAngle=0;rollCooldown=ROLL_COOLDOWN;}}
@@ -455,8 +448,8 @@ function update(dt,t){
     if(o.wobble!==undefined)o.wobble+=dt;if(o.rot!==undefined)o.rot+=o.rotSpd*dt;
     if(o.y>H+70){obs.splice(i,1);continue;}
     if(invincible<=0){
-      const dx=Math.abs(o.x-squachX),dy=Math.abs(o.y-squachY),hitR=o.type==='powerup'?o.size+22:o.size+12;
-      if(dx<hitR&&dy<hitR){
+      const ddx=Math.abs(o.x-squachX),ddy=Math.abs(o.y-squachY),hitR=o.type==='powerup'?o.size+22:o.size+12;
+      if(ddx<hitR&&ddy<hitR){
         if(o.type==='powerup'){
           const sub=o.subtype||'ammo';
           if(sub==='ammo'){ammo=maxAmmo;reloading=false;reloadT=0;updateAmmoUI();sfxPickup();document.getElementById('reloadBar').style.display='none';spawnParts(o.x,o.y,'#FFD700',14);popup(o.x,o.y,'RELOAD!');}
@@ -493,19 +486,22 @@ function update(dt,t){
 }
 
 function startGame(){
-  score=0;dist=0;gameTime=0;speed=120;lives=3;curLane=1;targetLane=1;squachX=laneX(1);squachY=SQUACH_BASE_Y;laneSlideVel=0;
-  rolling=false;rollAngle=0;rollCooldown=0;tunnelZ=0;ammo=maxAmmo;reloading=false;reloadT=0;
+  score=0;dist=0;gameTime=0;speed=120;lives=3;
+  targetLane=1;curLane=1;squachX=laneX(1);velocityX=0;
+  rolling=false;rollAngle=0;rollCooldown=0;tunnelZ=0;
+  ammo=maxAmmo;reloading=false;reloadT=0;
   stones=[];obs=[];parts=[];exps=[];spawnT=0;invincible=0;shake=0;
   document.getElementById('reloadBar').style.display='none';document.getElementById('reloadFill').style.width='0%';
   document.getElementById('ss').style.display='none';document.getElementById('gs').style.display='none';
-  state='playing';updateHUD();updateAmmoUI();startMusic();lastT=performance.now();requestAnimationFrame(loop);
+  state='playing';updateHUD();updateAmmoUI();startMusic();
+  lastT=performance.now();requestAnimationFrame(loop);
 }
 
 function gameOver(){
   state='gameover';stopMusic();sfxDie();
   if(score>hiScore){hiScore=score;localStorage.setItem('sr2_hs',hiScore);}
-  document.getElementById('fs').textContent=score.toLocaleString();
-  document.getElementById('hsG').textContent=hiScore.toLocaleString();
+  document.getElementById('fs').textContent=Math.floor(score).toLocaleString();
+  document.getElementById('hsG').textContent=Math.floor(hiScore).toLocaleString();
   document.getElementById('gs').style.display='flex';
   const ne=document.getElementById('ne'),ni=document.getElementById('ni');
   if(isHigh(score)&&score>0){ne.style.display='flex';ni.value='';setTimeout(()=>ni.focus(),300);renderLB('lb',null);}
@@ -514,8 +510,8 @@ function gameOver(){
 
 function submitScore(){
   const name=document.getElementById('ni').value.trim()||'ACER';
-  if(window._fbS)window._fbS(name,score,Math.floor(dist));
-  const local=getLocal();local.push({name:name.toUpperCase(),score,dist:Math.floor(dist),date:Date.now()});
+  if(window._fbS)window._fbS(name,Math.floor(score),Math.floor(dist));
+  const local=getLocal();local.push({name:name.toUpperCase(),score:Math.floor(score),dist:Math.floor(dist),date:Date.now()});
   local.sort((a,b)=>b.score-a.score);saveLocal(local.slice(0,10));
   document.getElementById('ne').style.display='none';renderLB('lb',score);
 }
@@ -536,9 +532,11 @@ document.getElementById('startBtn').onclick=startGame;
 document.getElementById('retryBtn').onclick=startGame;
 document.getElementById('saveBtn').onclick=submitScore;
 document.getElementById('ni').addEventListener('keydown',e=>{if(e.key==='Enter')submitScore();});
-renderLB('slb');document.getElementById('hsS').textContent=hiScore;
+renderLB('slb');document.getElementById('hsS').textContent=Math.floor(hiScore);
 
-muteBtn=document.createElement('button');muteBtn.textContent='🔊';muteBtn.style.cssText='position:absolute;top:10px;right:10px;z-index:50;background:rgba(0,0,0,0.5);border:1px solid #C9A84C;color:#FFD700;font-size:15px;padding:3px 7px;cursor:pointer;border-radius:4px;';muteBtn.onclick=toggleMute;document.getElementById('gc').appendChild(muteBtn);
+muteBtn=document.createElement('button');muteBtn.textContent='🔊';
+muteBtn.style.cssText='position:absolute;top:10px;right:10px;z-index:50;background:rgba(0,0,0,0.5);border:1px solid #C9A84C;color:#FFD700;font-size:15px;padding:3px 7px;cursor:pointer;border-radius:4px;';
+muteBtn.onclick=toggleMute;document.getElementById('gc').appendChild(muteBtn);
 </script>
 </body>
 </html>
