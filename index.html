@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -99,16 +98,16 @@
 
   let W, H, running = false, over = false, score = 0, dist = 0, wave = 1;
   let speed = 3, frame = 0, trees = 0, shiftReady = false, shifting = false, shiftTimer = 0;
-  let mode = 'forest'; // forest, desert, ice, void
+  let mode = 'forest';
   let modeTimer = 0, modeDuration = 600;
   let particles = [], obstacles = [], collectibles = [], stars = [];
 
   const modes = ['forest','desert','ice','void'];
   const modeColors = {
-    forest:{bg:'#051a05',ground:'#1a4a1a',obs:'#2d5a27',sky:'#0a2a0a'},
-    desert:{bg:'#1a0f00',ground:'#4a3a1a',obs:'#8a6a3a',sky:'#2a1a0a'},
-    ice:{bg:'#0a0a1a',ground:'#1a3a4a',obs:'#4a7a8a',sky:'#0a1a2a'},
-    void:{bg:'#0a0015',ground:'#2a1a3a',obs:'#5a3a6a',sky:'#1a0a2a'}
+    forest:{bg:'#051a05',ground:'#1a4a1a',obs:'#2d5a27',sky:'#0a2a0a',accent:'#4aff4a'},
+    desert:{bg:'#1a0f00',ground:'#4a3a1a',obs:'#8a6a3a',sky:'#2a1a0a',accent:'#ffaa44'},
+    ice:{bg:'#0a0a1a',ground:'#1a3a4a',obs:'#4a7a8a',sky:'#0a1a2a',accent:'#44aaff'},
+    void:{bg:'#0a0015',ground:'#2a1a3a',obs:'#5a3a6a',sky:'#1a0a2a',accent:'#aa44ff'}
   };
   const modeNames = {forest:'🌲 FOREST SECTOR',desert:'🏜️ DESERT SECTOR',ice:'❄️ ICE SECTOR',void:'👁️ VOID SECTOR'};
 
@@ -118,16 +117,15 @@
   }
   window.addEventListener('resize', resize); resize();
 
-  // Stars
   for(let i=0;i<80;i++) stars.push({x:Math.random()*500,y:Math.random()*700,s:Math.random()*1.5+0.5,a:Math.random()});
 
-  const player = {x:0,y:0,r:14,vy:0,grav:0.45,jump:-7.5,groundY:0,angle:0};
+  const player = {x:0,y:0,r:18,vy:0,grav:0.45,jump:-7.5,groundY:0,angle:0,tilt:0};
 
   function reset(){
     score = 0; dist = 0; wave = 1; speed = 3; trees = 0; frame = 0;
     mode = 'forest'; modeTimer = 0; shifting = false; shiftReady = false; shiftTimer = 0;
     obstacles = []; collectibles = []; particles = [];
-    player.y = H - 80; player.vy = 0; player.groundY = H - 60;
+    player.y = H - 80; player.vy = 0; player.groundY = H - 60; player.tilt = 0;
     scEl.textContent = '0'; dcEl.textContent = '0m'; waveEl.textContent = '1';
     modeBanner.textContent = modeNames.forest; modeBanner.style.color = '#4aff4a';
     updateTreesHud();
@@ -176,7 +174,7 @@
     let next = modes[(modes.indexOf(mode)+1)%modes.length];
     mode = next; modeTimer = 0;
     modeBanner.textContent = modeNames[mode];
-    modeBanner.style.color = mode==='forest'?'#4aff4a':mode==='desert'?'#ffaa44':mode==='ice'?'#44aaff':'#aa44ff';
+    modeBanner.style.color = modeColors[mode].accent;
     addParticles(W/2,H/2,'#FFD700',30);
     trees = 0; updateTreesHud();
   }
@@ -206,40 +204,34 @@
     dcEl.textContent = Math.floor(dist) + 'm';
     scEl.textContent = score;
 
-    // Wave progression
     if(dist > wave * 300){
       wave++; waveEl.textContent = wave; speed += 0.4;
       showPopup('WAVE ' + wave, W/2-30, H/2);
     }
 
-    // Mode timer
     modeTimer++;
     if(modeTimer > modeDuration && trees >= 5){
       shiftReady = true;
     }
 
-    // Shifting effect
     if(shifting){
       shiftTimer--;
       if(shiftTimer <= 0) shifting = false;
     }
 
-    // Player physics
     player.vy += player.grav;
     player.y += player.vy;
     if(player.y > player.groundY){
       player.y = player.groundY; player.vy = 0;
     }
     player.angle += 0.08;
+    player.tilt = player.tilt * 0.9 + (player.vy * 0.04);
 
-    // Spawn
     if(frame % Math.max(30, 90 - wave*5) === 0) spawnObs();
     if(frame % 120 === 0) spawnCollectible();
 
-    // Update obstacles
     for(let i=obstacles.length-1;i>=0;i--){
       let o = obstacles[i]; o.x -= speed;
-      // Collision
       if(!o.hit && o.x < player.x+player.r && o.x+o.w > player.x-player.r &&
          player.y-player.r < o.y+o.h && player.y+player.r > o.y){
         o.hit = true; gameOver();
@@ -247,7 +239,6 @@
       if(o.x + o.w < -20) obstacles.splice(i,1);
     }
 
-    // Update collectibles
     for(let i=collectibles.length-1;i>=0;i--){
       let col = collectibles[i]; col.x -= speed;
       if(!col.taken){
@@ -267,7 +258,6 @@
       if(col.x < -30) collectibles.splice(i,1);
     }
 
-    // Particles
     for(let i=particles.length-1;i>=0;i--){
       let p = particles[i];
       p.x += p.vx; p.y += p.vy; p.life -= 0.04;
@@ -275,12 +265,87 @@
     }
   }
 
+  // Draw the Squach ship with canvas primitives
+  function drawShip(x, y, tilt, thrust){
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(tilt);
+    
+    // Shadow / glow
+    ctx.shadowColor = modeColors[mode].accent;
+    ctx.shadowBlur = 15;
+    
+    // Main fuselage - sleek teardrop
+    ctx.fillStyle = '#2a2a3a';
+    ctx.beginPath();
+    ctx.moveTo(18, 0);
+    ctx.quadraticCurveTo(8, -10, -14, -6);
+    ctx.quadraticCurveTo(-20, 0, -14, 6);
+    ctx.quadraticCurveTo(8, 10, 18, 0);
+    ctx.fill();
+    
+    // Cockpit canopy
+    ctx.fillStyle = '#44aaff';
+    ctx.shadowColor = '#44aaff';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.ellipse(2, -2, 7, 4, 0, 0, Math.PI*2);
+    ctx.fill();
+    
+    // Wing left
+    ctx.fillStyle = '#3a3a4a';
+    ctx.shadowColor = modeColors[mode].accent;
+    ctx.shadowBlur = 5;
+    ctx.beginPath();
+    ctx.moveTo(-4, -6);
+    ctx.lineTo(-16, -14);
+    ctx.lineTo(-8, -4);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Wing right
+    ctx.beginPath();
+    ctx.moveTo(-4, 6);
+    ctx.lineTo(-16, 14);
+    ctx.lineTo(-8, 4);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Engine glow
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = `rgba(255, 100, 50, ${0.6 + 0.4*Math.sin(frame*0.4)})`;
+    ctx.beginPath();
+    ctx.moveTo(-18, -3);
+    ctx.lineTo(-26 - thrust*8, 0);
+    ctx.lineTo(-18, 3);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Inner engine core
+    ctx.fillStyle = `rgba(255, 220, 100, ${0.8 + 0.2*Math.sin(frame*0.5)})`;
+    ctx.beginPath();
+    ctx.moveTo(-18, -1.5);
+    ctx.lineTo(-22 - thrust*5, 0);
+    ctx.lineTo(-18, 1.5);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Accent stripe
+    ctx.strokeStyle = modeColors[mode].accent;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(12, 0);
+    ctx.lineTo(-10, 0);
+    ctx.stroke();
+    
+    ctx.restore();
+  }
+
   function draw(){
     const colors = modeColors[mode];
     ctx.fillStyle = colors.bg;
     ctx.fillRect(0,0,W,H);
 
-    // Stars
     ctx.fillStyle = '#fff';
     for(let s of stars){
       ctx.globalAlpha = s.a * (0.5 + 0.5*Math.sin(frame*0.02 + s.x));
@@ -288,11 +353,9 @@
     }
     ctx.globalAlpha = 1;
 
-    // Ground
     const groundY = H - 60;
     ctx.fillStyle = colors.ground;
     ctx.fillRect(0, groundY, W, 60);
-    // Ground detail
     ctx.strokeStyle = colors.obs; ctx.lineWidth = 2;
     ctx.beginPath();
     for(let i=0;i<W;i+=20){
@@ -300,18 +363,15 @@
     }
     ctx.stroke();
 
-    // Shifting flash
     if(shifting){
       ctx.fillStyle = 'rgba(255,255,255,' + (shiftTimer/40)*0.4 + ')';
       ctx.fillRect(0,0,W,H);
     }
 
-    // Obstacles
     for(let o of obstacles){
       ctx.fillStyle = colors.obs;
       if(o.type === 'ground'){
         ctx.fillRect(o.x, o.y, o.w, o.h);
-        // Spikes top
         ctx.fillStyle = colors.bg;
         for(let j=0;j<o.w;j+=8){
           ctx.beginPath();
@@ -327,7 +387,6 @@
       }
     }
 
-    // Collectibles
     for(let col of collectibles){
       if(col.taken) continue;
       ctx.font = '20px serif';
@@ -335,21 +394,10 @@
       ctx.fillText(col.type==='tree'?'🌲':'💎', col.x, col.y+7);
     }
 
-    // Player (ship)
-    ctx.save();
-    ctx.translate(player.x, player.y);
-    ctx.rotate(Math.sin(player.angle)*0.1);
-    ctx.font = '28px serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('🛸', 0, 8);
-    // Engine trail
-    ctx.fillStyle = `rgba(100,200,255,${0.5+0.5*Math.sin(frame*0.3)})`;
-    ctx.beginPath();
-    ctx.moveTo(-10, 5); ctx.lineTo(-18-Math.random()*8, 0); ctx.lineTo(-10, -5);
-    ctx.fill();
-    ctx.restore();
+    // Draw the Squach ship
+    const thrust = player.y < player.groundY - 2 ? 1.5 : 0.5;
+    drawShip(player.x, player.y, player.tilt, thrust);
 
-    // Particles
     for(let p of particles){
       ctx.globalAlpha = p.life;
       ctx.fillStyle = p.color;
@@ -357,7 +405,6 @@
     }
     ctx.globalAlpha = 1;
 
-    // Speed lines
     if(speed > 5){
       ctx.strokeStyle = 'rgba(255,255,255,0.1)';
       ctx.lineWidth = 1;
@@ -385,7 +432,6 @@
     fsEl.textContent = score;
     gs.style.display = 'flex';
     renderLeaderboard();
-    // Check if score qualifies for leaderboard
     let lb = JSON.parse(localStorage.getItem('sq_lb')||'[]');
     if(lb.length < 10 || score > (lb[lb.length-1]?.s||0)){
       ne.style.display = 'flex'; ni.focus();
@@ -415,7 +461,6 @@
     renderLeaderboard();
   }
 
-  // Controls
   document.getElementById('sb').addEventListener('click', start);
   document.getElementById('rb').addEventListener('click', start);
   nb.addEventListener('click', saveScore);
@@ -432,10 +477,8 @@
   c.addEventListener('mousedown', e=>{ if(running && !over) doShift(); });
   c.addEventListener('touchstart', e=>{ e.preventDefault(); if(running && !over) doShift(); });
 
-  // Initial draw
   resize(); draw();
 })();
 </script>
 </body>
 </html>
-
