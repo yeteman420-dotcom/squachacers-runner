@@ -3,27 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>SquachAcers: Universe Shifter 19X Master</title>
+<title>SquachAcers: 19X Universe Shifter</title>
 <link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Exo+2:wght@300;400;700;900&display=swap" rel="stylesheet">
 <style>
   :root {
-    --gold: #C9A84C;
-    --gold-bright: #FFD700;
-    --red: #ff3333;
-    --neon: #44ff44;
-    --ortho: #00ffff;
-    --tactical-green: #1a331a;
-    --bg-deep: #050505;
-    --ui-border: rgba(68, 255, 68, 0.3);
+    --neon-green: #44ff44;
+    --gold-leaf: #C9A84C;
+    --alert-red: #ff3333;
+    --ortho-blue: #00ffff;
+    --tactical-bg: #010501;
+    --ui-glow: 0 0 15px rgba(68, 255, 68, 0.4);
   }
 
-  * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent;
-    outline: none;
-  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
 
   body {
     background-color: #000;
@@ -39,62 +31,51 @@
     touch-action: none;
   }
 
-  #gc {
+  #game-container {
     position: relative;
     width: min(500px, 100vw);
     height: min(700px, 100vh);
+    background-color: var(--tactical-bg);
+    border: 2px solid #1a331a;
     overflow: hidden;
-    border: 1px solid var(--tactical-green);
-    background-color: var(--bg-deep);
-    box-shadow: inset 0 0 100px rgba(0,0,0,1), 0 0 30px rgba(68, 255, 68, 0.1);
+    box-shadow: 0 0 40px rgba(0,0,0,1), var(--ui-glow);
   }
 
   canvas {
     width: 100%;
     height: 100%;
     display: block;
-    image-rendering: pixelated;
+    image-rendering: auto;
   }
 
-  /* --- HUD ARCHITECTURE --- */
-  #hud {
+  /* --- HUD INTERFACE --- */
+  #tactical-hud {
     position: absolute;
     top: 0; left: 0; right: 0;
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    padding: 15px 20px 0;
+    padding: 15px 25px;
     pointer-events: none;
     z-index: 100;
   }
 
-  .hb {
+  .hud-box {
     display: flex;
     flex-direction: column;
     align-items: center;
-    background: rgba(0,0,0,0.4);
-    padding: 5px 10px;
-    border-radius: 4px;
-    border: 1px solid var(--ui-border);
+    background: rgba(0,0,0,0.7);
+    padding: 8px 15px;
+    border: 1px solid rgba(68, 255, 68, 0.25);
+    border-radius: 2px;
+    min-width: 90px;
+    backdrop-filter: blur(5px);
   }
 
-  .hl {
-    font-family: 'Black Ops One', cursive;
-    font-size: 10px;
-    letter-spacing: 2px;
-    color: var(--gold);
-    text-transform: uppercase;
-  }
+  .label { font-family: 'Black Ops One', cursive; font-size: 10px; letter-spacing: 2px; color: var(--gold-leaf); }
+  .value { font-family: 'Black Ops One', cursive; font-size: 26px; color: #fff; text-shadow: 0 0 12px var(--gold-leaf); }
 
-  .hv {
-    font-family: 'Black Ops One', cursive;
-    font-size: 24px;
-    color: #fff;
-    text-shadow: 0 0 10px var(--gold);
-  }
-
-  /* --- SCREEN UI --- */
-  .screen {
+  /* --- SCREEN ARCHITECTURE --- */
+  .system-screen {
     position: absolute;
     inset: 0;
     display: flex;
@@ -104,614 +85,430 @@
     z-index: 200;
     padding: 40px;
     text-align: center;
-    background: rgba(0,0,0,0.94);
-    backdrop-filter: blur(8px);
+    background: rgba(0,0,0,0.96);
+    backdrop-filter: blur(12px);
   }
 
-  #ss {
-    background: radial-gradient(circle at center, #0a1a0a 0%, #000 100%);
-  }
+  #start-screen { background: radial-gradient(circle at center, #0a240a 0%, #000 100%); }
 
-  #gs {
-    display: none;
-    border-top: 4px solid var(--red);
-  }
-
-  .logo {
+  .logo-text {
     font-family: 'Black Ops One', cursive;
-    font-size: 48px;
-    color: var(--neon);
-    text-shadow: 0 0 40px #2e7d32;
-    letter-spacing: 5px;
-    margin-bottom: 10px;
+    font-size: 46px;
+    color: var(--neon-green);
+    text-shadow: 0 0 35px #1a5e1a;
+    letter-spacing: 7px;
+    margin-bottom: 5px;
   }
 
-  .sub {
-    font-family: 'Black Ops One', cursive;
-    font-size: 16px;
-    color: #777;
-    letter-spacing: 8px;
-    margin-bottom: 30px;
-    text-transform: uppercase;
-  }
+  .version-tag { font-family: 'Black Ops One', cursive; font-size: 14px; color: #666; letter-spacing: 7px; margin-bottom: 35px; }
 
-  .btn {
+  .action-btn {
     font-family: 'Black Ops One', cursive;
     font-size: 20px;
     letter-spacing: 4px;
-    padding: 18px 50px;
-    border: 2px solid var(--neon);
+    padding: 20px 55px;
+    border: 2px solid var(--neon-green);
     background: transparent;
-    color: var(--neon);
+    color: var(--neon-green);
     cursor: pointer;
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     text-transform: uppercase;
-    margin-top: 20px;
+    margin-top: 25px;
   }
 
-  .btn:hover {
-    background: rgba(68, 255, 68, 0.2);
-    box-shadow: 0 0 30px rgba(68, 255, 68, 0.4);
-    transform: scale(1.05);
-  }
+  .action-btn:hover { background: rgba(68, 255, 68, 0.1); box-shadow: 0 0 30px var(--neon-green); transform: scale(1.05); }
 
-  #mode-banner {
+  #mode-indicator {
     position: absolute;
-    top: 75px;
+    top: 90px;
     width: 100%;
     text-align: center;
     font-family: 'Black Ops One', cursive;
-    font-size: 14px;
-    letter-spacing: 6px;
+    font-size: 13px;
+    letter-spacing: 5px;
     z-index: 150;
-    color: var(--neon);
-    text-shadow: 0 0 10px #000;
+    color: var(--neon-green);
   }
 
-  #trees-hud {
+  #integrity-meter {
     position: absolute;
-    bottom: 40px;
+    bottom: 45px;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
-    gap: 12px;
+    gap: 15px;
     z-index: 150;
     background: rgba(0,0,0,0.6);
-    padding: 8px 20px;
-    border-radius: 30px;
-    border: 1px solid var(--ui-border);
+    padding: 10px 22px;
+    border-radius: 40px;
+    border: 1px solid rgba(68, 255, 68, 0.3);
   }
 
-  .popup {
+  .notification {
     position: absolute;
     font-family: 'Black Ops One', cursive;
-    font-size: 20px;
-    color: var(--neon);
+    font-size: 22px;
+    color: var(--neon-green);
     pointer-events: none;
     z-index: 500;
-    text-shadow: 0 0 10px #000;
     animation: viralPop 1.2s ease-out forwards;
+    text-shadow: 0 0 15px #000;
   }
 
   @keyframes viralPop {
-    0% { opacity: 0; transform: translateY(20px) scale(0.5); }
-    20% { opacity: 1; transform: translateY(0) scale(1.2); }
-    100% { opacity: 0; transform: translateY(-100px) scale(1.5); }
+    0% { opacity: 0; transform: translateY(30px) scale(0.6); }
+    20% { opacity: 1; transform: translateY(0) scale(1.1); }
+    100% { opacity: 0; transform: translateY(-90px) scale(1.4); }
   }
 </style>
 </head>
 <body>
 
-<div id="gc">
-  <canvas id="c"></canvas>
+<div id="game-container">
+  <canvas id="main-canvas"></canvas>
   
-  <div id="hud">
-    <div class="hb">
-      <div class="hl">OBLITERATIONS</div>
-      <div class="hv" id="sc">0</div>
-    </div>
-    <div class="hb">
-      <div class="hl">WAVE</div>
-      <div class="hv" id="waveHud">1</div>
-    </div>
-    <div class="hb">
-      <div class="hl">GRID_SCAN</div>
-      <div class="hv" id="dc">0m</div>
-    </div>
+  <div id="tactical-hud">
+    <div class="hud-box"><div class="label">OBLITERATIONS</div><div class="value" id="score-val">0</div></div>
+    <div class="hud-box"><div class="label">WAVE_SCAN</div><div class="value" id="wave-val">1</div></div>
+    <div class="hud-box"><div class="label">GRID_DIST</div><div class="value" id="dist-val">0m</div></div>
   </div>
 
-  <div id="mode-banner"></div>
-  <div id="trees-hud"></div>
+  <div id="mode-indicator"></div>
+  <div id="integrity-meter"></div>
 
-  <div class="screen" id="ss">
-    <div class="logo">SQUACHACERS</div>
-    <div class="sub">19X MASTER BUILD</div>
-    <div style="font-size: 80px; margin: 20px 0;">🦶</div>
-    <div style="color: #bbb; font-size: 14px; line-height: 1.8; margin-bottom: 30px;">
-      <span style="color: var(--neon);">SYSTEM: ORTHOSCAN AI ACTIVE</span><br>
-      ALIGN MODTOE MODULES<br>
-      EVADE ACERS INVESTIGATORS<br>
-      OBLITERATE GRID ANOMALIES
+  <div class="system-screen" id="start-screen">
+    <div class="logo-text">SQUACHACERS</div>
+    <div class="version-tag">19X MASTER BUILD</div>
+    <div style="font-size: 85px; margin: 25px 0; filter: drop-shadow(0 0 20px #2e7d32);">🦶</div>
+    <div style="color: #bbb; font-size: 14px; line-height: 2; margin-bottom: 30px; letter-spacing: 1px;">
+      ORTHOSCAN AI INITIALIZED<br>
+      ALIGN MODTOE INTERFACE<br>
+      AVOID ACERS INVESTIGATOR UNITS
     </div>
-    <button class="btn" onclick="initializeScan()">BOOT SCANNER</button>
+    <button class="action-btn" onclick="startHardwareSequence()">BOOT SCANNER</button>
   </div>
 
-  <div class="screen" id="gs">
-    <div style="font-family:'Black Ops One'; font-size:48px; color:var(--red); text-shadow: 0 0 25px #600; margin-bottom: 10px;">SQUACH DOWN</div>
-    <div class="sub">SYSTEM FAILURE</div>
-    <div id="finalScore" style="font-size: 70px; color: #fff; margin-bottom: 20px;">0</div>
-    <div style="color: var(--gold); font-size: 12px; letter-spacing: 2px; margin-bottom: 30px;">TOTAL DATA OBLITERATED</div>
-    <button class="btn" onclick="initializeScan()">RE-SCAN GRID</button>
+  <div class="system-screen" id="crash-screen" style="display:none;">
+    <div style="font-family:'Black Ops One'; font-size:48px; color:var(--alert-red); text-shadow: 0 0 25px #600;">SQUACH DOWN</div>
+    <div class="version-tag" style="color:var(--alert-red);">SCANNER CRITICAL FAILURE</div>
+    <div id="final-stats" style="font-size: 65px; color: #fff; margin: 25px 0;">0</div>
+    <button class="action-btn" onclick="startHardwareSequence()">RE-SCAN GRID</button>
   </div>
 </div>
 
 <script>
 /**
- * ============================================================================
- * SQUACHACERS 19X MASTER ENGINE
- * ============================================================================
- * Developer: Sonny (Matthew Stokes)
- * Brand: SquachAcers (fka Yetey)
- * Components: ModToes (Toe Spacers), OrthoScan AI
- * Antagonists: Anomalous Cryptid Environmental Research Society
- * ============================================================================
+ * 19X MASTER ENGINE - CORE ARCHITECTURE
+ * Developer: Matthew Stokes (Sonny)
+ * Components: ModToes Patent-Pending System
  */
 
-const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d');
+const canvas = document.getElementById('main-canvas');
+const ctx = canvas.getContext('2d', { alpha: false });
 const W = 500, H = 700;
 canvas.width = W; canvas.height = H;
 
-// --- GLOBAL STATE ---
-let state = 'start';
-let score = 0;
-let dist = 0;
-let wave = 1;
-let lives = 5;
-let inv = 0;
-let gameTime = 0;
-let waveT = 0;
-let lastT = 0;
-let speed = 250;
-let txS = W / 2;
-let shake = 0;
+// --- DYNAMIC SYSTEM STATE ---
+let gameState = 'standby';
+let globalScore = 0;
+let gridDistance = 0;
+let currentWave = 1;
+let integrityPoints = 5;
+let invulnFrames = 0;
+let lastTimestamp = 0;
+let waveTimer = 0;
+let targetX = W / 2;
+let playerX = W / 2;
+let playerY = H - 140;
 
-// --- ENTITY BUFFERS ---
-let obs = [];
-let beams = [];
-let parts = [];
-let rings = [];
-let ws = {}; // Wave State Container
+// --- OBJECT BUFFERS ---
+let activeObstacles = [];
+let kineticBeams = [];
+let particleBuffer = [];
+let waveState = {};
 
-// --- WAVE DEFINITIONS ---
-const MODES = [
-  { id: 'modtoes', name: 'MODTOE ALIGNMENT', col: '#44ff44', icon: '🦶', type: 'align' },
-  { id: 'creek', name: 'CRYPTID CREEK', col: '#2e7d32', icon: '🕵️‍♂️', type: 'frog' },
-  { id: 'space', name: 'SPACE RUNNER', col: '#00ffff', icon: '🛸', type: 'dodge' },
-  { id: 'kong', name: 'SQUACH KONG', col: '#ff8800', icon: '🦍', type: 'jump' },
-  { id: 'galaga', name: 'ACERS INVASION', col: '#44aaff', icon: '👾', type: 'shoot' },
-  { id: 'flappy', name: 'FLAPPY SQUACH', col: '#00ff88', icon: '🐦', type: 'flap' },
-  { id: 'asteroids', name: 'UFO BELT', col: '#ff4444', icon: '☄️', type: 'thrust' }
+const WAVE_DURATION = 35; 
+
+// --- GAME GENRES (UNIVERSE SHIFT) ---
+const SHIFT_MODES = [
+  { id: 'modtoes', name: 'MODTOE ALIGNMENT', theme: '#44ff44', type: 'precision' },
+  { id: 'creek', name: 'CRYPTID CREEK', theme: '#2e7d32', type: 'evasion' },
+  { id: 'space', name: 'SPACE RUNNER', theme: '#00ffff', type: 'combat' }
 ];
 
-// --- AUDIO ARCHITECTURE (WEB AUDIO API) ---
-const AC = new (window.AudioContext || window.webkitAudioContext)();
+// --- ADVANCED AUDIO (WEB AUDIO API) ---
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-function playTone(freq, type, duration, volume = 0.15) {
-  const o = AC.createOscillator();
-  const g = AC.createGain();
-  o.type = type;
-  o.frequency.setValueAtTime(freq, AC.currentTime);
-  g.gain.setValueAtTime(volume, AC.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + duration);
-  o.connect(g);
-  g.connect(AC.destination);
-  o.start();
-  o.stop(AC.currentTime + duration);
+function triggerAudio(freq, wave, dur, vol = 0.15) {
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = wave;
+  osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+  gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + dur);
 }
 
-function sfxLaser() { playTone(800, 'square', 0.1); playTone(1200, 'sine', 0.08); }
-function sfxHit() { playTone(120, 'sawtooth', 0.4, 0.3); }
-function sfxPickup() { playTone(880, 'sine', 0.1, 0.2); playTone(1100, 'sine', 0.1, 0.2); }
-function sfxJump() { playTone(350, 'sine', 0.15, 0.2); }
-function sfxWave() { playTone(200, 'square', 0.3); playTone(400, 'square', 0.3); }
-
-// --- INPUT SYSTEM ---
-function getTouchPos(e) {
+// --- INPUT PROCESSING ---
+function mapInputCoordinates(e) {
   const rect = canvas.getBoundingClientRect();
-  const x = e.touches ? e.touches[0].clientX : e.clientX;
-  return (x - rect.left) * (W / rect.width);
+  const xPos = e.touches ? e.touches[0].clientX : e.clientX;
+  targetX = (xPos - rect.left) * (W / rect.width);
 }
 
-canvas.addEventListener('mousemove', e => { txS = getTouchPos(e); });
-canvas.addEventListener('touchmove', e => { e.preventDefault(); txS = getTouchPos(e); }, { passive: false });
+canvas.addEventListener('mousemove', mapInputCoordinates);
+canvas.addEventListener('touchmove', e => { e.preventDefault(); mapInputCoordinates(e); }, { passive: false });
 canvas.addEventListener('touchstart', e => { 
-  txS = getTouchPos(e); 
-  if (state === 'playing') handleViralAction(); 
+  if (gameState === 'active') executeViralAction(); 
+  mapInputCoordinates(e);
 }, { passive: false });
 
 window.addEventListener('keydown', e => {
-  if (e.key === 'ArrowLeft') txS -= 45;
-  if (e.key === 'ArrowRight') txS += 45;
-  if (e.key === ' ' || e.key === 'ArrowUp') handleViralAction();
+  if (e.key === 'ArrowLeft') targetX -= 50;
+  if (e.key === 'ArrowRight') targetX += 50;
+  if (e.key === ' ' || e.key === 'ArrowUp') executeViralAction();
 });
 
-function handleViralAction() {
-  const m = MODES[(wave - 1) % MODES.length];
-  if (m.type === 'shoot' || m.type === 'dodge') {
-    beams.push({ x: sqX, y: sqY - 30, vy: -900 });
-    sfxLaser();
+function executeViralAction() {
+  const mode = SHIFT_MODES[(currentWave - 1) % SHIFT_MODES.length];
+  if (mode.type === 'combat') {
+    kineticBeams.push({ x: playerX, y: playerY - 35, vy: -950 });
+    triggerAudio(750, 'square', 0.1);
   }
-  if (m.type === 'jump' && ws.grounded) {
-    ws.vy = -18;
-    ws.grounded = false;
-    sfxJump();
-  }
-  if (m.type === 'frog') {
-    ws.fy -= 75;
-    sfxJump();
-    checkFrogWin();
-  }
-  if (m.type === 'flap') {
-    ws.vy = -12;
-    playTone(400, 'triangle', 0.1);
+  if (mode.type === 'evasion') {
+    waveState.fy -= 75;
+    triggerAudio(450, 'sine', 0.12);
+    checkCreekBoundary();
   }
 }
 
-// --- VISUAL JUICE ---
-function triggerViralPop(x, y, txt) {
-  const p = document.createElement('div');
-  p.className = 'popup';
-  p.textContent = txt;
-  p.style.left = x + 'px';
-  p.style.top = y + 'px';
-  document.getElementById('gc').appendChild(p);
-  setTimeout(() => p.remove(), 1200);
+// --- VISUAL FEEDBACK SYSTEMS ---
+function notify(x, y, txt) {
+  const div = document.createElement('div');
+  div.className = 'notification';
+  div.textContent = txt;
+  const rect = canvas.getBoundingClientRect();
+  div.style.left = (rect.left + x * (rect.width/W)) + 'px';
+  div.style.top = (rect.top + y * (rect.height/H)) + 'px';
+  document.getElementById('game-container').appendChild(div);
+  setTimeout(() => div.remove(), 1200);
 }
 
-function spawnDebris(x, y, col) {
-  for (let i = 0; i < 15; i++) {
-    parts.push({
-      x, y,
-      vx: (Math.random() - 0.5) * 300,
-      vy: (Math.random() - 0.5) * 300,
-      life: 1,
-      decay: 0.8 + Math.random(),
-      size: 2 + Math.random() * 4,
-      col: col
-    });
+function updateIntegrityUI() {
+  const meter = document.getElementById('integrity-meter');
+  meter.innerHTML = '';
+  for (let i = 0; i < 5; i++) {
+    const span = document.createElement('span');
+    span.textContent = '🌲';
+    span.style.fontSize = '26px';
+    span.style.opacity = i < integrityPoints ? '1' : '0.1';
+    span.style.filter = i < integrityPoints ? 'drop-shadow(0 0 10px #4f4)' : 'none';
+    span.style.transition = '0.5s';
+    meter.appendChild(span);
   }
 }
 
-function createShockwave(x, y, col) {
-  rings.push({ x, y, r: 10, life: 1, col: col });
+function checkCreekBoundary() {
+  if (waveState.fy < 90) {
+    globalScore += 1250;
+    notify(W/2, H/2, "ACERS OBLITERATED!");
+    triggerAudio(1000, 'sine', 0.5, 0.2);
+    waveState.fy = H - 90;
+    waveTimer = WAVE_DURATION; 
+  }
 }
 
-// --- MASTER STATE MACHINE ---
-function initializeScan() {
-  score = 0; dist = 0; wave = 1; lives = 5; waveT = 0; gameTime = 0;
-  inv = 0; sqX = W / 2; sqY = H - 130;
-  state = 'playing';
-  obs = []; beams = []; parts = []; rings = [];
-  document.getElementById('ss').style.display = 'none';
-  document.getElementById('gs').style.display = 'none';
-  refreshWaveMetadata();
-  lastT = performance.now();
-  updateHealthDisplay();
-  requestAnimationFrame(masterLoop);
+// --- BOOT SEQUENCE ---
+function startHardwareSequence() {
+  globalScore = 0;
+  gridDistance = 0;
+  currentWave = 1;
+  integrityPoints = 5;
+  waveTimer = 0;
+  gameState = 'active';
+  activeObstacles = [];
+  kineticBeams = [];
+  
+  document.getElementById('start-screen').style.display = 'none';
+  document.getElementById('crash-screen').style.display = 'none';
+  
+  resetWaveEnvironment();
+  lastTimestamp = performance.now();
+  updateIntegrityUI();
+  requestAnimationFrame(enterpriseLoop);
 }
 
-function refreshWaveMetadata() {
-  const m = MODES[(wave - 1) % MODES.length];
-  ws = { 
-    spawnTimer: 1, 
-    vy: 0, 
-    grounded: true, 
-    fy: H - 85, 
+function resetWaveEnvironment() {
+  const mode = SHIFT_MODES[(currentWave - 1) % SHIFT_MODES.length];
+  waveState = { 
+    nextSpawn: 1.0, 
+    fy: H - 90, 
     fx: W / 2,
-    pollenCount: 0 
+    gridOffset: 0
   };
   
-  if (m.type === 'frog') buildCryptidLanes();
-  
-  const banner = document.getElementById('mode-banner');
-  banner.textContent = m.icon + " " + m.name;
-  banner.style.color = m.col;
-  document.getElementById('waveHud').textContent = wave;
-  sfxWave();
+  document.getElementById('mode-indicator').textContent = mode.name;
+  document.getElementById('mode-indicator').style.color = mode.theme;
+  document.getElementById('wave-val').textContent = currentWave;
+  triggerAudio(200, 'sawtooth', 0.4);
 }
 
-function buildCryptidLanes() {
-  ws.lanes = [];
-  for (let i = 0; i < 6; i++) {
-    ws.lanes.push({
-      y: 110 + (i * 85),
-      dir: i % 2 === 0 ? 1 : -1,
-      speed: 130 + (wave * 15),
-      type: i % 3 === 0 ? 'drone' : 'investigator',
-      items: [
-        { x: Math.random() * W, w: 80 },
-        { x: (Math.random() * W + 250) % W, w: 80 }
-      ]
-    });
-  }
+function processIntegrityLoss(x, y) {
+  if (invulnFrames > 0) return;
+  integrityPoints--;
+  invulnFrames = 2.0;
+  triggerAudio(100, 'sawtooth', 0.5, 0.3);
+  updateIntegrityUI();
+  if (integrityPoints <= 0) systemShutDown();
 }
 
-function updateHealthDisplay() {
-  const container = document.getElementById('trees-hud');
-  container.innerHTML = '';
-  for (let i = 0; i < 5; i++) {
-    const s = document.createElement('span');
-    s.textContent = '🌲';
-    s.style.fontSize = '24px';
-    s.style.opacity = i < lives ? '1' : '0.1';
-    s.style.filter = i < lives ? 'drop-shadow(0 0 8px #44ff44)' : 'none';
-    s.style.transition = 'all 0.4s ease';
-    container.appendChild(s);
-  }
+function systemShutDown() {
+  gameState = 'failed';
+  document.getElementById('final-stats').textContent = Math.floor(globalScore);
+  document.getElementById('crash-screen').style.display = 'flex';
 }
 
-function triggerDamage(x, y) {
-  if (inv > 0) return;
-  lives--;
-  inv = 2.0;
-  shake = 1.0;
-  sfxHit();
-  spawnDebris(x, y, '#ff3333');
-  createShockwave(x, y, '#ff3333');
-  updateHealthDisplay();
-  if (lives <= 0) systemCrash();
-}
+// --- PHYSICS ARCHITECTURE ---
+function runPhysicsEngine(dt, now) {
+  const mode = SHIFT_MODES[(currentWave - 1) % SHIFT_MODES.length];
+  waveTimer += dt;
+  gridDistance += dt * 18;
 
-function checkFrogWin() {
-  if (ws.fy < 95) {
-    score += 1200;
-    triggerViralPop(W / 2, H / 2, "OBLITERATED ACERS!");
-    sfxPickup();
-    createShockwave(W / 2, H / 2, '#44ff44');
-    ws.fy = H - 85;
-    waveT = WAVE_DUR; // Force next wave
-  }
-}
+  // Smoothing Player Movement
+  playerX += (targetX - playerX) * 0.2;
+  playerX = Math.max(35, Math.min(W - 35, playerX));
 
-function systemCrash() {
-  state = 'gameover';
-  document.getElementById('fs').textContent = Math.floor(score);
-  document.getElementById('gs').style.display = 'flex';
-  playTone(80, 'sawtooth', 0.8, 0.5);
-}
-
-// --- PHYSICS ENGINES ---
-function updateEntities(dt, t) {
-  const m = MODES[(wave - 1) % MODES.length];
-  gameTime += dt;
-  waveT += dt;
-  dist += dt * 15;
-
-  // Global Movement
-  sqX += (txS - sqX) * 0.18;
-  sqX = Math.max(35, Math.min(W - 35, sqX));
-
-  // Mode Specific Gravity/Physics
-  if (m.type === 'jump' || m.type === 'flap') {
-    ws.vy += 0.6; // Gravity
-    sqY += ws.vy;
-    if (sqY > H - 130) {
-      sqY = H - 130;
-      ws.vy = 0;
-      ws.grounded = true;
+  // Entity Spawning
+  waveState.nextSpawn -= dt;
+  if (waveState.nextSpawn <= 0) {
+    if (mode.id === 'modtoes') {
+      activeObstacles.push({ id: 'modtoe', x: Math.random()*(W-80)+40, y:-60, vy: 350 + (currentWave * 20) });
+    } else if (mode.id === 'creek') {
+      activeObstacles.push({ id: 'investigator', x: Math.random()*W, y:-60, vy: 480 });
+    } else {
+      activeObstacles.push({ id: 'anomaly', x: Math.random()*W, y:-60, vy: 300 + (currentWave * 25) });
     }
-    if (sqY < 50) sqY = 50;
-  } else {
-    sqY = H - 130;
+    waveState.nextSpawn = Math.max(0.4, 0.9 - (currentWave * 0.1));
   }
 
-  // Spawning Logic
-  ws.spawnTimer -= dt;
-  if (ws.spawnTimer <= 0) {
-    generateViralObstacle(m);
-    ws.spawnTimer = Math.max(0.45, 0.9 - (wave * 0.08));
-  }
+  // Processing Obstacles
+  for (let i = activeObstacles.length - 1; i >= 0; i--) {
+    const o = activeObstacles[i];
+    o.y += o.vy * dt;
 
-  // Obstacle Processing
-  for (let i = obs.length - 1; i >= 0; i--) {
-    const o = obs[i];
-    o.y += o.vy * dt || 0;
-    o.x += o.vx * dt || 0;
-
-    // Viral Hitbox Detection
-    const targetX = m.type === 'frog' ? ws.fx : sqX;
-    const targetY = m.type === 'frog' ? ws.fy : sqY;
-    const hitDist = Math.hypot(o.x - targetX, o.y - targetY);
-
-    if (hitDist < 48) {
-      if (o.type === 'modtoe') {
-        score += 250;
-        sfxPickup();
-        createShockwave(o.x, o.y, '#44ff44');
-        triggerViralPop(o.x, o.y, "ALIGNED!");
-        obs.splice(i, 1);
+    const px = mode.type === 'evasion' ? waveState.fx : playerX;
+    const py = mode.type === 'evasion' ? waveState.fy : playerY;
+    
+    if (Math.hypot(o.x - px, o.y - py) < 50) {
+      if (o.id === 'modtoe') {
+        globalScore += 200;
+        triggerAudio(900, 'sine', 0.2, 0.2);
+        notify(o.x, o.y, "ALIGNMENT PERFECT!");
+        activeObstacles.splice(i, 1);
       } else {
-        triggerDamage(targetX, targetY);
-        obs.splice(i, 1);
+        processIntegrityLoss(px, py);
+        activeObstacles.splice(i, 1);
       }
-    } else if (o.y > H + 100 || o.x < -150 || o.x > W + 150) {
-      if (o.type === 'modtoe') triggerDamage(sqX, H - 20); // Missed ModToe alignment
-      obs.splice(i, 1);
+    } else if (o.y > H + 50) {
+      if (o.id === 'modtoe') processIntegrityLoss(playerX, H - 20); 
+      activeObstacles.splice(i, 1);
     }
   }
 
-  // Beam Processing
-  for (let j = beams.length - 1; j >= 0; j--) {
-    const b = beams[j];
+  // Combat Beams
+  for (let j = kineticBeams.length - 1; j >= 0; j--) {
+    const b = kineticBeams[j];
     b.y += b.vy * dt;
-    if (b.y < -50) beams.splice(j, 1);
+    if (b.y < -50) kineticBeams.splice(j, 1);
 
-    for (let i = obs.length - 1; i >= 0; i--) {
-      const o = obs[i];
-      if (Math.hypot(b.x - o.x, b.y - o.y) < 45) {
-        if (o.type !== 'modtoe') {
-          score += 100;
-          spawnDebris(o.x, o.y, m.col);
-          obs.splice(i, 1);
-          beams.splice(j, 1);
-          break;
-        }
+    for (let i = activeObstacles.length - 1; i >= 0; i--) {
+      const o = activeObstacles[i];
+      if (o.id !== 'modtoe' && Math.hypot(b.x - o.x, b.y - o.y) < 45) {
+        globalScore += 75;
+        activeObstacles.splice(i, 1);
+        kineticBeams.splice(j, 1);
+        break;
       }
     }
   }
 
-  // Wave Transition Logic
-  if (waveT >= WAVE_DUR) {
-    wave++;
-    waveT = 0;
-    refreshWaveMetadata();
+  // State Transitions
+  if (waveTimer >= WAVE_DURATION) {
+    currentWave++;
+    waveTimer = 0;
+    resetWaveEnvironment();
   }
-
-  // Juice Lifecycle
-  if (inv > 0) inv -= dt;
-  if (shake > 0) shake -= dt * 2;
-  for (let i = parts.length - 1; i >= 0; i--) {
-    const p = parts[i];
-    p.x += p.vx * dt; p.y += p.vy * dt; p.life -= p.decay * dt;
-    if (p.life <= 0) parts.splice(i, 1);
-  }
-  for (let i = rings.length - 1; i >= 0; i--) {
-    const r = rings[i];
-    r.r += 200 * dt; r.life -= dt * 2.5;
-    if (r.life <= 0) rings.splice(i, 1);
-  }
+  if (invulnFrames > 0) invulnFrames -= dt;
 }
 
-function generateViralObstacle(m) {
-  const laneX = [80, W / 2, W - 80];
-  const x = laneX[Math.floor(Math.random() * 3)];
-
-  if (m.type === 'align') {
-    obs.push({ type: 'modtoe', x: Math.random() * (W - 100) + 50, y: -60, vy: 380 + (wave * 20) });
-  } else if (m.type === 'frog') {
-    // Lanes handle their own drawing/logic
-  } else if (m.type === 'jump') {
-    obs.push({ type: 'barrel', x: W + 60, y: H - 145, vx: -420 - (wave * 25), vy: 0 });
-  } else {
-    obs.push({ type: 'anom', x: Math.random() * W, y: -60, vy: 320 + (wave * 30), col: m.col });
-  }
-}
-
-// --- RENDER ENGINE ---
-function drawViralFrame(t) {
-  ctx.save();
-  if (shake > 0) {
-    const s = shake * 8;
-    ctx.translate((Math.random() - 0.5) * s, (Math.random() - 0.5) * s);
-  }
-
-  // 1. Technical OrthoScan Grid
+// --- RENDERING ENGINE ---
+function renderFrame(t) {
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = '#102210';
+  
+  // High-Precision OrthoScan Technical Grid
+  ctx.strokeStyle = '#122512';
   ctx.lineWidth = 1;
   for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
   for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
 
-  const m = MODES[(wave - 1) % MODES.length];
+  const mode = SHIFT_MODES[(currentWave - 1) % SHIFT_MODES.length];
 
-  // 2. Cryptid Creek Geometry
-  if (m.type === 'frog') {
-    ctx.fillStyle = 'rgba(46, 125, 50, 0.15)';
-    ctx.fillRect(0, 0, W, 100); ctx.fillRect(0, H - 75, W, 75);
-    ws.lanes.forEach(lane => {
-      ctx.fillStyle = '#111';
-      ctx.fillRect(0, lane.y - 40, W, 80);
-      ctx.strokeStyle = 'rgba(255,255,255,0.05)';
-      ctx.setLineDash([15, 15]);
-      ctx.beginPath(); ctx.moveTo(0, lane.y); ctx.lineTo(W, lane.y); ctx.stroke();
-      ctx.setLineDash([]);
-      lane.items.forEach(item => {
-        item.x += lane.dir * lane.speed * 0.016;
-        if (item.x > W + 50) item.x = -50; if (item.x < -50) item.x = W + 50;
-        ctx.font = '40px Arial';
-        ctx.fillText(lane.type === 'drone' ? '🛸' : '🕵️‍♂️', item.x, lane.y + 12);
-        // Collision logic inside draw for smoother interpolation
-        if (inv <= 0 && Math.abs(ws.fy - lane.y) < 30 && Math.abs(ws.fx - item.x) < 35) {
-          triggerDamage(ws.fx, ws.fy); ws.fy = H - 85;
-        }
-      });
-    });
-  }
-
-  // 3. Entity Rendering
-  obs.forEach(o => {
-    ctx.save();
-    ctx.shadowBlur = 15; ctx.shadowColor = m.col;
-    ctx.font = '48px Arial';
-    ctx.textAlign = 'center';
-    let icon = '👾';
-    if (o.type === 'modtoe') icon = '🦶';
-    if (o.type === 'barrel') icon = '🛢️';
+  // Entity Draw Loop
+  activeObstacles.forEach(o => {
+    ctx.shadowBlur = 20; ctx.shadowColor = mode.theme;
+    ctx.font = '45px Arial'; ctx.textAlign = 'center';
+    let icon = o.id === 'modtoe' ? '🦶' : o.id === 'investigator' ? '🕵️‍♂️' : '👾';
     ctx.fillText(icon, o.x, o.y + 15);
-    ctx.restore();
   });
 
-  beams.forEach(b => {
-    ctx.fillStyle = '#0ff';
-    ctx.shadowBlur = 10; ctx.shadowColor = '#0ff';
-    ctx.fillRect(b.x - 3, b.y, 6, 20);
+  kineticBeams.forEach(b => {
+    ctx.fillStyle = '#0ff'; ctx.shadowBlur = 10; ctx.shadowColor = '#0ff';
+    ctx.fillRect(b.x - 3, b.y, 6, 25);
   });
 
-  // 4. Particle Effects
-  parts.forEach(p => {
-    ctx.globalAlpha = p.life;
-    ctx.fillStyle = p.col;
-    ctx.fillRect(p.x, p.y, p.size, p.size);
-  });
-  rings.forEach(r => {
-    ctx.strokeStyle = r.col;
-    ctx.globalAlpha = r.life;
-    ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.stroke();
-  });
-
-  // 5. Branded Squach Model
-  const px = m.type === 'frog' ? ws.fx : sqX;
-  const py = m.type === 'frog' ? ws.fy : sqY;
+  // Dynamic Branded Player (Squach + ModToes)
+  const px = mode.type === 'evasion' ? waveState.fx : playerX;
+  const py = mode.type === 'evasion' ? waveState.fy : playerY;
   
   ctx.save();
   ctx.translate(px, py);
-  if (inv > 0 && Math.floor(t * 12) % 2 === 0) ctx.globalAlpha = 0.25;
+  if (invulnFrames > 0 && Math.floor(t * 12) % 2 === 0) ctx.globalAlpha = 0.25;
   
-  // Custom ModToe Rendering
-  ctx.fillStyle = m.col;
+  // Rendering the ModToe Modules
+  ctx.fillStyle = mode.theme;
   for (let i = -2; i <= 2; i++) {
     ctx.beginPath();
-    ctx.arc(i * 8.5, 28, 4.5, 0, Math.PI * 2);
+    ctx.arc(i * 9, 30, 5, 0, Math.PI * 2);
     ctx.fill();
   }
   
-  // Tactical Squach Body
-  ctx.shadowBlur = 25; ctx.shadowColor = m.col;
+  // Squach Anatomical Base
+  ctx.shadowBlur = 30; ctx.shadowColor = mode.theme;
   ctx.fillStyle = '#3a2a1a';
-  ctx.beginPath(); ctx.ellipse(0, 0, 24, 32, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0, 0, 25, 34, 0, 0, Math.PI * 2); ctx.fill();
   
-  // AI Sensors (Eyes)
+  // Tactical Optic Sensors
   ctx.fillStyle = '#FFD700';
-  ctx.beginPath(); ctx.arc(-7, -10, 4, 0, Math.PI * 2); ctx.arc(7, -10, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(-8, -12, 4.5, 0, Math.PI * 2); ctx.arc(8, -12, 4.5, 0, Math.PI * 2); ctx.fill();
   
-  ctx.restore();
   ctx.restore();
 
-  // Update HUD values
-  document.getElementById('sc').textContent = Math.floor(score);
-  document.getElementById('dc').textContent = Math.floor(dist) + 'm';
+  // Final UI Synch
+  document.getElementById('score-val').textContent = Math.floor(globalScore);
+  document.getElementById('dist-val').textContent = Math.floor(gridDistance) + 'm';
 }
 
-function masterLoop(ts) {
-  if (state !== 'playing') return;
-  const dt = Math.min((ts - lastT) / 1000, 0.08);
-  lastT = ts;
-  updateEntities(dt, ts / 1000);
-  drawViralFrame(ts / 1000);
-  requestAnimationFrame(masterLoop);
+function enterpriseLoop(ts) {
+  if (gameState !== 'active') return;
+  const dt = Math.min((ts - lastTimestamp) / 1000, 0.1);
+  lastTimestamp = ts;
+  runPhysicsEngine(dt, ts / 1000);
+  renderFrame(ts / 1000);
+  requestAnimationFrame(enterpriseLoop);
 }
 </script>
 </body>
