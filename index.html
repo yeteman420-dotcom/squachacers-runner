@@ -25,17 +25,17 @@
   .btn:hover { background: rgba(68, 255, 68, 0.1); box-shadow: 0 0 30px var(--neon); }
   #mode-banner { position: absolute; top: 85px; width: 100%; text-align: center; font-family: 'Black Ops One', cursive; font-size: 14px; color: var(--neon); z-index: 150; }
   #integrity-meter { position: absolute; bottom: 45px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; z-index: 150; background: rgba(0,0,0,0.55); padding: 10px 22px; border-radius: 40px; border: 1px solid rgba(68,255,68,0.25); }
-  .notification { position: absolute; font-family: 'Black Ops One', cursive; font-size: 22px; color: var(--neon); pointer-events: none; z-index: 500; animation: viralPop 1.2s ease-out forwards; }
-  @keyframes viralPop { 0% { opacity: 0; transform: translateY(30px) scale(0.6); } 20% { opacity: 1; transform: translateY(0) scale(1.1); } 100% { opacity: 0; transform: translateY(-90px) scale(1.4); } }
+  .notification { position: absolute; font-family: 'Black Ops One', cursive; font-size: 20px; color: var(--ortho-cyan); pointer-events: none; z-index: 500; animation: viralPop 1.2s ease-out forwards; }
+  @keyframes viralPop { 0% { opacity: 0; transform: translateY(30px); } 20% { opacity: 1; transform: translateY(0) scale(1.1); } 100% { opacity: 0; transform: translateY(-80px); } }
 </style>
 </head>
 <body>
 <div id="gc">
   <canvas id="c"></canvas>
   <div id="hud">
-    <div class="hb"><div class="hl">SCORE</div><div class="hv" id="sc">0</div></div>
+    <div class="hb"><div class="hl">POINTS</div><div class="hv" id="sc">0</div></div>
     <div class="hb"><div class="hl">WAVE</div><div class="hv" id="waveHud">1</div></div>
-    <div class="hb"><div class="hl">DIST</div><div class="hv" id="dc">0m</div></div>
+    <div class="hb"><div class="hl">BONUS</div><div class="hv" id="mult">1.0x</div></div>
   </div>
   <div id="mode-banner"></div>
   <div id="integrity-meter"></div>
@@ -47,7 +47,7 @@
   <div class="system-screen" id="gs" style="display:none;">
     <div style="font-family:'Black Ops One'; font-size:48px; color:var(--red);">SQUACH DOWN</div>
     <div id="final-stats" style="font-size: 65px; color: #fff; margin: 25px 0;">0</div>
-    <button class="btn" onclick="initializeGame()">FLY AGAIN</button>
+    <button class="btn" onclick="initializeGame()">RE-SCAN GRID</button>
   </div>
 </div>
 
@@ -63,10 +63,10 @@ const MODES = [
   { id:'modtoes', name:'MODTOE ALIGNMENT', col:'#44ff44', icon:'🦶', type:'align' },
   { id:'paccreek', name:'CRYPTID MAZE', col:'#00ffff', icon:'👾', type:'maze' },
   { id:'floopy', name:'FLOOPY SQUACH', col:'#00ff88', icon:'🐦', type:'flap' },
-  { id:'kong', name:'SQUACH KONG', col:'#ff8800', icon:'🦍', type:'jump' },
-  { id:'frog', name:'CRYPTID CREEK', col:'#2e7d32', icon:'🐸', type:'frogger' }
+  { id:'kong', name:'SQUACH KONG', col:'#ff8800', icon:'🦍', type:'jump' }
 ];
 
+// --- INPUTS ---
 function mapInput(e) {
   const r = canvas.getBoundingClientRect();
   const x = e.touches ? e.touches[0].clientX : e.clientX;
@@ -80,11 +80,18 @@ canvas.addEventListener('touchstart', e => { mapInput(e); if (state === 'active'
 
 function executeAction() {
   const m = MODES[(wave-1)%MODES.length];
-  if (m.type === 'flap') { ws.vy = -12; }
-  if (m.type === 'jump' && ws.grounded) { ws.vy = -17; ws.grounded = false; }
+  if (m.type === 'align' || m.type === 'maze') {
+    beams.push({ x: sqX, y: sqY - 35, vy: -1200, col: m.col });
+  }
+  if (m.type === 'flap') ws.vy = -14;
+  if (m.type === 'jump' && ws.grounded) { ws.vy = -20; ws.grounded = false; }
 }
 
-function updateIntegrityUI() {
+function updateHUD() {
+  const mult = 1 + (wave * 0.2);
+  document.getElementById('sc').textContent = Math.floor(score);
+  document.getElementById('waveHud').textContent = wave;
+  document.getElementById('mult').textContent = mult.toFixed(1) + 'x';
   const container = document.getElementById('integrity-meter'); container.innerHTML = '';
   for (let i = 0; i < 5; i++) {
     const s = document.createElement('span'); s.textContent = '🌲';
@@ -93,9 +100,15 @@ function updateIntegrityUI() {
   }
 }
 
+function notify(x, y, txt) {
+  const p = document.createElement('div'); p.className = 'notification'; p.textContent = txt;
+  p.style.left = x + 'px'; p.style.top = y + 'px';
+  document.getElementById('gc').appendChild(p); setTimeout(()=>p.remove(), 1200);
+}
+
 function takeDamage() {
-  if (inv > 0) return; lives--; inv=2; shake=1.2; 
-  if(lives<=0) state='over'; updateIntegrityUI();
+  if (inv > 0) return; lives--; inv=2; shake=1.5; 
+  if(lives<=0) state='over'; updateHUD();
 }
 
 function initializeGame() {
@@ -103,121 +116,127 @@ function initializeGame() {
   obs = []; beams = []; 
   document.getElementById('ss').style.display = 'none';
   document.getElementById('gs').style.display = 'none';
-  setupWave(); lastT = performance.now(); updateIntegrityUI(); requestAnimationFrame(loop);
+  setupWave(); lastT = performance.now(); updateHUD(); requestAnimationFrame(loop);
 }
 
 function setupWave() {
   const m = MODES[(wave - 1) % MODES.length];
-  ws = { spawn: 1.2, vy: 0, grounded: true, dots: [], pipes: [], lanes: [] };
+  // SCALING: Difficulty increases spawns and speed every wave
+  const diffScale = Math.min(2.5, 1 + (wave * 0.15));
+  ws = { 
+    spawn: 1.2 / diffScale, 
+    vy: 0, 
+    grounded: true, 
+    dots: [], 
+    diff: diffScale,
+    girders: [H-140, H-300, H-460] 
+  };
   
   if (m.type === 'maze') {
-    for(let i=0; i<15; i++) ws.dots.push({x: Math.random()*(W-100)+50, y: Math.random()*(H-200)+100, active: true});
+    for(let i=0; i<10 + wave; i++) ws.dots.push({x: Math.random()*(W-100)+50, y: Math.random()*(H-200)+100, active: true});
     sqX = W/2; sqY = H/2;
-  } else if (m.type === 'frogger') {
-    for(let i=0; i<5; i++) ws.lanes.push({y: 150+i*100, dir: i%2===0?1:-1, spd: 150+Math.random()*100});
-    sqX = W/2; sqY = H-80;
-  } else if (m.type === 'flap') {
-    sqX = 100; sqY = H/2;
-  } else if (m.type === 'jump') {
-    ws.girders = [H-100, H-250, H-400];
-    sqY = H-100;
-  } else {
-    sqX = W/2; sqY = H-140;
   }
-  
   document.getElementById('mode-banner').textContent = m.icon + " " + m.name;
   document.getElementById('mode-banner').style.color = m.col;
-  document.getElementById('waveHud').textContent = wave;
 }
 
 function loop(ts) {
   if (state !== 'active') return;
   const dt = Math.min((ts - lastT) / 1000, 0.1); lastT = ts;
-  waveT += dt; dist += dt * 10;
+  waveT += dt; 
   const m = MODES[(wave - 1) % MODES.length];
 
-  // --- MOVEMENT ---
-  if (m.type === 'maze' || m.type === 'frogger') {
+  // --- PHYSICS & SCALING ---
+  if (m.type === 'maze') {
     sqX += (txS - sqX) * 0.15; sqY += (tyS - sqY) * 0.15;
-  } else if (m.type === 'flap') {
-    ws.vy += 0.5; sqY += ws.vy;
-    if (sqY > H-50 || sqY < 50) takeDamage();
   } else if (m.type === 'jump') {
     sqX += (txS - sqX) * 0.22;
-    ws.vy += 0.8; sqY += ws.vy;
-    if (sqY >= H-100) { sqY = H-100; ws.vy = 0; ws.grounded = true; }
+    ws.vy += 1.0; sqY += ws.vy;
+    ws.grounded = false;
+    // FIX: Girder Platform Collision
+    ws.girders.forEach(gy => {
+        if (ws.vy > 0 && sqY > gy - 35 && sqY < gy && sqX > 0 && sqX < W) {
+            sqY = gy - 35; ws.vy = 0; ws.grounded = true;
+        }
+    });
+  } else if (m.type === 'flap') {
+    ws.vy += 0.6; sqY += ws.vy;
+    if (sqY > H-50 || sqY < 50) takeDamage();
   } else {
     sqX += (txS - sqX) * 0.22; sqY = H-140;
   }
   sqX = Math.max(30, Math.min(W-30, sqX));
 
-  // --- SPAWNING ---
+  // --- SPAWNING (Difficulty Scaled) ---
   ws.spawn -= dt;
   if (ws.spawn <= 0) {
-    if (m.type === 'maze') obs.push({ id:'acer', x: Math.random()*W, y:-50, vy: 250, vx: (Math.random()-0.5)*100 });
-    else if (m.type === 'align') obs.push({ id:'modtoe', x: Math.random()*(W-80)+40, y:-60, vy: 350 });
-    else if (m.type === 'jump') obs.push({ id:'barrel', x: W+50, y: H-100, vx: -250 }); // Calibrated DK level
-    else if (m.type === 'flap') obs.push({ id:'pipe', x: W+50, gap: 150, gy: 150+Math.random()*(H-300) });
-    ws.spawn = (m.type === 'jump' ? 1.8 : 0.8);
+    const spd = 300 * ws.diff;
+    if (m.type === 'maze') obs.push({ id:'acer', x: Math.random()*W, y:-50, vy: spd*0.8, vx: (Math.random()-0.5)*200 });
+    else if (m.type === 'align') obs.push({ id:'modtoe', x: Math.random()*(W-80)+40, y:-60, vy: spd });
+    else if (m.type === 'jump') obs.push({ id:'barrel', x: W+50, y: ws.girders[Math.floor(Math.random()*3)]-30, vx: -spd*0.7 });
+    else obs.push({ id:'anom', x: Math.random()*W, y:-60, vy: spd*1.2 });
+    ws.spawn = (0.9 / ws.diff);
   }
 
-  // --- LOGIC & COLLISIONS ---
+  // --- BEAMS & COLLISIONS ---
+  for (let i = beams.length - 1; i >= 0; i--) {
+    let b = beams[i]; b.y += b.vy * dt;
+    obs.forEach((o, oi) => {
+      if (Math.hypot(b.x - o.x, b.y - o.y) < 40) {
+        score += 50 * (1 + wave * 0.1);
+        notify(o.x, o.y, "+Bonus");
+        obs.splice(oi, 1); beams.splice(i, 1);
+      }
+    });
+    if (b.y < -50) beams.splice(i, 1);
+  }
+
   for (let i = obs.length - 1; i >= 0; i--) {
-    const o = obs[i]; 
-    if(o.id === 'pipe') {
-        o.x -= 200 * dt;
-        if(sqX > o.x && sqX < o.x+50 && (sqY < o.gy || sqY > o.gy+o.gap)) takeDamage();
-        if(o.x < -100) obs.splice(i, 1);
-        continue;
-    }
-    o.y += o.vy * dt || 0; if(o.vx) o.x += o.vx * dt;
-    
+    const o = obs[i]; o.y += (o.vy || 0) * dt; o.x += (o.vx || 0) * dt;
     if (Math.hypot(o.x - sqX, o.y - sqY) < 45) {
-      if (o.id === 'modtoe') { score += 250; obs.splice(i, 1); }
-      else { takeDamage(); obs.splice(i, 1); }
+      if (o.id === 'modtoe') { score += 250 * (1 + wave * 0.1); obs.splice(i, 1); }
+      else if (inv <= 0) { takeDamage(); obs.splice(i, 1); }
     } else if (o.y > H + 50 || o.x < -100) {
       if (o.id === 'modtoe') takeDamage();
       obs.splice(i, 1);
     }
   }
 
-  if (m.type === 'maze') {
-    ws.dots.forEach(d => { if(d.active && Math.hypot(d.x-sqX, d.y-sqY) < 30) { d.active = false; score += 100; }});
-    if (ws.dots.every(d => !d.active)) { score += 1000; waveT = 40; }
+  // Wave Completion Multiplier
+  if (waveT > 35) { 
+    score += wave * 1000; 
+    wave++; waveT = 0; 
+    setupWave(); 
+    notify(W/2, H/2, "WAVE BONUS!");
   }
-  if (m.type === 'frogger' && sqY < 100) { score += 1500; waveT = 40; }
-
-  if (waveT > 35) { wave++; waveT = 0; setupWave(); }
   if (inv > 0) inv -= dt; if (shake > 0) shake -= dt * 4;
 
-  // --- DRAWING ---
+  // --- RENDERING ---
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
   ctx.strokeStyle = '#122512'; ctx.lineWidth = 1;
   for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
-  for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  
+  if(m.type === 'maze') ws.dots.forEach(d => { if(d.active) { 
+    ctx.fillStyle = '#44ff44'; ctx.beginPath(); ctx.arc(d.x, d.y, 8, 0, Math.PI*2); ctx.fill(); 
+    if(Math.hypot(d.x-sqX, d.y-sqY) < 30) { d.active = false; score += 100; }
+  }});
+  
+  if(m.type === 'jump') { ctx.fillStyle='#1a331a'; ws.girders.forEach(gy => ctx.fillRect(0, gy, W, 15)); }
 
-  if(m.type === 'maze') ws.dots.forEach(d => { if(d.active) { ctx.fillStyle = '#44ff44'; ctx.beginPath(); ctx.arc(d.x, d.y, 8, 0, Math.PI*2); ctx.fill(); }});
-  if(m.type === 'jump') { ctx.fillStyle='#333'; ws.girders.forEach(gy => ctx.fillRect(0, gy+30, W, 10)); }
-  if(m.type === 'frogger') ws.lanes.forEach(l => { ctx.fillStyle='#111'; ctx.fillRect(0, l.y-20, W, 40); ctx.fillStyle='#ff0'; ctx.fillRect((dist*l.spd)%W, l.y, 30, 15); });
+  beams.forEach(b => { ctx.fillStyle = b.col; ctx.fillRect(b.x-2, b.y, 4, 20); });
+  obs.forEach(o => { ctx.font = '45px Arial'; ctx.textAlign = 'center'; ctx.fillText(o.id==='modtoe'?'🦶':o.id==='acer'?'🕵️‍♂️':o.id==='barrel'?'🛢️':'👾', o.x, o.y+15); });
 
-  obs.forEach(o => { 
-    ctx.font = '45px Arial'; ctx.textAlign = 'center'; 
-    if(o.id === 'pipe') { ctx.fillStyle=m.col; ctx.fillRect(o.x, 0, 50, o.gy); ctx.fillRect(o.x, o.gy+o.gap, 50, H); }
-    else ctx.fillText(o.id==='modtoe'?'🦶':o.id==='acer'?'🕵️‍♂️':o.id==='barrel'?'🛢️':'👾', o.x, o.y+15); 
-  });
-
-  // --- CHARACTER WITH EYES ---
+  // --- SQUACH VISUAL IDENTITY ---
   ctx.save(); ctx.translate(sqX, sqY);
   if (inv > 0 && Math.floor(ts / 100) % 2 === 0) ctx.globalAlpha = 0.3;
   ctx.fillStyle = m.col; for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.arc(i * 9, 30, 5, 0, Math.PI * 2); ctx.fill(); }
   ctx.fillStyle = '#3a2a1a'; ctx.beginPath(); ctx.ellipse(0, 0, 25, 34, 0, 0, Math.PI * 2); ctx.fill();
-  // RESTORED EYES
-  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(-7, -8, 4, 0, Math.PI*2); ctx.arc(7, -8, 4, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(-7, -8, 2, 0, Math.PI*2); ctx.arc(7, -8, 2, 0, Math.PI*2); ctx.fill();
+  // RESTORED EYES & TACTICAL GLOW
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(-7, -8, 5, 0, Math.PI*2); ctx.arc(7, -8, 5, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(-7, -8, 2.5, 0, Math.PI*2); ctx.arc(7, -8, 2.5, 0, Math.PI*2); ctx.fill();
   ctx.restore();
 
-  document.getElementById('sc').textContent = Math.floor(score);
-  document.getElementById('dc').textContent = Math.floor(dist) + 'm';
+  updateHUD();
   if(state === 'active') requestAnimationFrame(loop);
   else if(state === 'over') { document.getElementById('gs').style.display='flex'; document.getElementById('final-stats').textContent=Math.floor(score); }
 }
