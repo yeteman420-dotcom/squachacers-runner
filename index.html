@@ -12,8 +12,7 @@
     --red: #ff3333;
     --neon: #44ff44;
     --ortho-cyan: #00ffff;
-    --tactical-green: #1a331a;
-    --bg-void: #010101;
+    --tactical-bg: #010201;
     --ui-glow: rgba(68, 255, 68, 0.4);
   }
 
@@ -37,15 +36,15 @@
     position: relative;
     width: min(500px, 100vw);
     height: min(700px, 100vh);
-    background-color: var(--bg-void);
-    border: 1px solid var(--tactical-green);
+    background-color: var(--tactical-bg);
+    border: 2px solid #1a331a;
     overflow: hidden;
     box-shadow: 0 0 60px rgba(0,0,0,1), 0 0 25px var(--ui-glow);
   }
 
   canvas { width: 100%; height: 100%; display: block; image-rendering: auto; }
 
-  /* --- HUD SYSTEM --- */
+  /* --- HUD ARCHITECTURE --- */
   #hud {
     position: absolute;
     top: 0; left: 0; right: 0;
@@ -60,7 +59,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    background: rgba(0,0,0,0.65);
+    background: rgba(0,0,0,0.7);
     padding: 8px 14px;
     border: 1px solid rgba(68, 255, 68, 0.2);
     border-radius: 2px;
@@ -82,8 +81,8 @@
     z-index: 200;
     padding: 40px;
     text-align: center;
-    background: rgba(0,0,0,0.96);
-    backdrop-filter: blur(12px);
+    background: rgba(0,0,0,0.97);
+    backdrop-filter: blur(15px);
   }
 
   #ss { background: radial-gradient(circle at center, #0a220a 0%, #000 100%); }
@@ -177,31 +176,32 @@
 
   <div class="system-screen" id="ss">
     <div class="logo">SQUACHACERS</div>
-    <div class="sub">19X MASTER GAME ENGINE</div>
+    <div class="sub">19X MASTER V2.0</div>
     <div style="font-size: 85px; margin: 25px 0; filter: drop-shadow(0 0 20px #2e7d32);">🦶</div>
     <div style="color: #bbb; font-size: 13px; line-height: 2; margin-bottom: 30px; letter-spacing: 1px;">
-      UNIVERSE SHIFTER ACTIVE<br>
+      SYSTEM CALIBRATED: SONNY BUILD<br>
       ALIGN MODTOES (THE FOOT LEVEL)<br>
       EVADE THE ACERS INVESTIGATORS
     </div>
-    <button class="btn" onclick="initializeGame()">START ENGINE</button>
-    <div style="font-size:11px;color:#444;letter-spacing:2px;margin-top:10px;">BEST: <span id="best-score">0</span></div>
+    <button class="btn" onclick="initializeHardwareSequence()">START ENGINE</button>
+    <div style="font-size:11px;color:#444;letter-spacing:2px;margin-top:10px;">BEST SCAN: <span id="best-score">0</span></div>
   </div>
 
   <div class="system-screen" id="gs" style="display:none;">
     <div style="font-family:'Black Ops One'; font-size:48px; color:var(--red); text-shadow: 0 0 25px #600;">SQUACH DOWN</div>
     <div class="sub" style="color:var(--red);">GAME OVER</div>
     <div id="final-stats" style="font-size: 65px; color: #fff; margin: 25px 0;">0</div>
-    <button class="btn" onclick="initializeGame()">PLAY AGAIN</button>
+    <button class="btn" onclick="initializeHardwareSequence()">RE-SCAN GRID</button>
   </div>
 </div>
 
 <script>
 /**
  * ============================================================================
- * UNIVERSE SHIFTER 19X MASTER GAME ENGINE
+ * UNIVERSE SHIFTER 19X - TACTICAL PERFORMANCE BUILD
  * ============================================================================
- * Developer: Sonny (Matthew Stokes)
+ * Focus: High Game Feel, Screen Shake, and Procedural "Juice"
+ * Architect: Sonny (Matthew Stokes)
  */
 
 const canvas = document.getElementById('c');
@@ -209,7 +209,7 @@ const ctx = canvas.getContext('2d', { alpha: false });
 const W = 500, H = 700;
 canvas.width = W; canvas.height = H;
 
-// --- DYNAMIC STATE ---
+// --- DYNAMIC SYSTEM STATE ---
 let state = 'standby';
 let score = 0, dist = 0, wave = 1, lives = 5, inv = 0;
 let sqX = W/2, sqY = H-140, txS = W/2, lastT = 0, waveT = 0, gameTime = 0;
@@ -219,15 +219,13 @@ let obs = [], beams = [], parts = [], rings = [], ws = {};
 const WAVE_DURATION = 35;
 const hiScore = parseInt(localStorage.getItem('sq_hs')||'0');
 
-// --- UNIVERSE SHIFTER MODES ---
+// --- UNIVERSE SHIFT MODES ---
 const MODES = [
-  { id:'modtoes', name:'MODTOE ALIGNMENT', col:'#44ff44', icon:'🦶', desc:'FOOT LEVEL: SLOT THE MODULES', type:'align' },
-  { id:'creek',   name:'CRYPTID CREEK',    col:'#2e7d32', icon:'🕵️‍♂️', desc:'EVADE ACERS INVESTIGATORS', type:'frog' },
-  { id:'space',   name:'SPACE RUNNER',     col:'#00ffff', icon:'🛸', desc:'DODGE ALIENS • TAP SHOOT', type:'dodge' },
-  { id:'kong',    name:'SQUACH KONG',      col:'#ff8800', icon:'🦍', desc:'JUMP BARRELS • CLIMB', type:'jump' },
-  { id:'runner',  name:'ENDLESS RUNNER',   col:'#ff00ff', icon:'🏃', desc:'SWIPE LANES • JUMP', type:'lane' },
-  { id:'galaga',  name:'ACERS INVASION',   col:'#44aaff', icon:'👾', desc:'OBLITERATE FORMATIONS', type:'shoot' },
-  { id:'asteroids',name:'UFO BELT',        col:'#ff4444', icon:'☄️', desc:'THRUST & ROTATE', type:'thrust' }
+  { id:'modtoes', name:'MODTOE ALIGNMENT', col:'#44ff44', icon:'🦶', desc:'SLOT THE MODULES', type:'align' },
+  { id:'creek',   name:'CRYPTID CREEK',    col:'#2e7d32', icon:'🕵️‍♂️', desc:'EVADE ACERS UNITS', type:'frog' },
+  { id:'space',   name:'SPACE RUNNER',     col:'#00ffff', icon:'🛸', desc:'DODGE ALIENS', type:'dodge' },
+  { id:'kong',    name:'SQUACH KONG',      col:'#ff8800', icon:'🦍', desc:'CLIMB GIRDERS', type:'jump' },
+  { id:'galaga',  name:'ACERS INVASION',   col:'#44aaff', icon:'👾', desc:'OBLITERATE FORMATIONS', type:'shoot' }
 ];
 
 // --- AUDIO ENGINE ---
@@ -245,41 +243,7 @@ function tone(f, tp, dur, vol = 0.2, delay = 0) {
   } catch(e) {}
 }
 
-function sfxLaser() { tone(800, 'sawtooth', 0.1, 0.15); tone(1200, 'sine', 0.08, 0.1, 0.02); }
-function sfxHit() { tone(120, 'triangle', 0.4, 0.4); }
-function sfxPickup() { tone(880, 'sine', 0.1, 0.2); tone(1100, 'sine', 0.1, 0.2, 0.05); }
-function sfxJump() { tone(350, 'sine', 0.15, 0.2); }
-function sfxWave() { tone(200, 'square', 0.3, 0.2); tone(400, 'square', 0.3, 0.2, 0.15); }
-
-// --- PROCEDURAL MUSIC ENGINE ---
-const MUSIC = {
-  modtoes:    {bass:[41,41,55,41], tempo:148, vol:0.11},
-  creek:      {bass:[43,43,50,43], tempo:130, vol:0.10},
-  spacerunner:{bass:[41,41,55,41], tempo:148, vol:0.11},
-  donkeykong: {bass:[36,36,43,36], tempo:122, vol:0.12},
-  galaga:     {bass:[38,38,50,38], tempo:140, vol:0.10}
-};
-
-function startMusic() {
-  if (mPlay) return; const ac = getAC(); mPlay = true;
-  const th = MUSIC[MODES[(wave-1)%MODES.length].id] || MUSIC.spacerunner;
-  const step = 60/th.tempo/4; const mg = ac.createGain(); mg.gain.value = th.vol; mg.connect(ac.destination); mN.m = mg;
-  let bs = 0, bt = ac.currentTime + 0.1;
-  function doBass() {
-    if (!mPlay) return;
-    while (bt < ac.currentTime + 0.4) {
-      const o = ac.createOscillator(), g = ac.createGain(); o.type = 'sawtooth'; o.frequency.value = th.bass[bs%4];
-      o.connect(g); g.connect(mg); g.gain.setValueAtTime(0.8, bt); g.gain.exponentialRampToValueAtTime(0.001, bt+step*1.8);
-      o.start(bt); o.stop(bt+step*2); bs++; bt+=step*2;
-    }
-    mN.bT = setTimeout(doBass, 150);
-  }
-  doBass();
-}
-
-function stopMusic() { mPlay = false; clearTimeout(mN.bT); if(mN.m) try{ mN.m.gain.linearRampToValueAtTime(0, AC.currentTime+0.2); } catch(e){} mN={}; }
-
-// --- INPUT HANDLERS ---
+// --- INPUTS & FEEL ---
 function mapInput(e) {
   const rect = canvas.getBoundingClientRect();
   const xPos = e.touches ? e.touches[0].clientX : e.clientX;
@@ -287,26 +251,53 @@ function mapInput(e) {
 }
 canvas.addEventListener('mousemove', mapInput);
 canvas.addEventListener('touchmove', e => { e.preventDefault(); mapInput(e); }, { passive: false });
-canvas.addEventListener('touchstart', e => { 
-  mapInput(e); 
-  if (state === 'active') executeGameAction(); 
-}, { passive: false });
+canvas.addEventListener('touchstart', e => { mapInput(e); if (state === 'active') executeGameAction(); }, { passive: false });
 
 window.addEventListener('keydown', e => {
-  if (e.key === 'ArrowLeft') txS -= 50;
-  if (e.key === 'ArrowRight') txS += 50;
-  if (e.key === ' ' || e.key === 'ArrowUp') { holding = true; executeGameAction(); }
+  if (e.key === 'ArrowLeft') txS -= 60;
+  if (e.key === 'ArrowRight') txS += 60;
+  if (e.key === ' ' || e.key === 'ArrowUp') executeGameAction();
 });
-window.addEventListener('keyup', e => { if (e.key === ' ' || e.key === 'ArrowUp') holding = false; });
 
 function executeGameAction() {
   const m = MODES[(wave-1)%MODES.length];
-  if (m.type === 'dodge' || m.type === 'shoot' || m.type === 'thrust') { beams.push({ x: sqX, y: sqY - 35, vy: -950 }); sfxLaser(); }
-  if (m.type === 'jump' && ws.grounded) { ws.vy = -17; ws.grounded = false; sfxJump(); }
-  if (m.type === 'frog') { ws.fy -= 75; sfxJump(); if(ws.fy < 95){ score+=1500; sfxPickup(); ws.fy=H-90; waveT=WAVE_DURATION; } }
+  if (m.type === 'dodge' || m.type === 'shoot') { beams.push({ x: sqX, y: sqY - 35, vy: -1000 }); tone(800, 'square', 0.1); }
+  if (m.type === 'jump' && ws.grounded) { ws.vy = -18; ws.grounded = false; tone(350, 'sine', 0.15); }
+  if (m.type === 'frog') { ws.fy -= 72; tone(400, 'sine', 0.1); if(ws.fy < 95){ score+=1500; notify(W/2, H/2, "ACERS EVADED!"); ws.fy=H-90; waveT=WAVE_DURATION; } }
 }
 
-// --- CORE LOOPS ---
+// --- VISUAL JUICE ---
+function notify(x, y, txt) {
+  const div = document.createElement('div'); div.className = 'notification'; div.textContent = txt;
+  const rect = canvas.getBoundingClientRect();
+  div.style.left = (rect.left + x * (rect.width/W)) + 'px'; div.style.top = (rect.top + y * (rect.height/H)) + 'px';
+  document.getElementById('gc').appendChild(div); setTimeout(() => div.remove(), 1200);
+}
+
+function spawnParts(x, y, col) {
+  for (let i = 0; i < 15; i++) {
+    parts.push({ x, y, vx: (Math.random()-0.5)*400, vy: (Math.random()-0.5)*400, life: 1, decay: 1.5, col });
+  }
+}
+
+// --- BOOT SEQUENCE ---
+function initializeHardwareSequence() {
+  score = 0; wave = 1; lives = 5; dist = 0; waveT = 0; state = 'active';
+  obs = []; beams = []; parts = []; rings = [];
+  document.getElementById('ss').style.display = 'none';
+  document.getElementById('gs').style.display = 'none';
+  setupWave(); lastT = performance.now(); updateIntegrityUI(); requestAnimationFrame(masterLoop);
+}
+
+function setupWave() {
+  const m = MODES[(wave - 1) % MODES.length];
+  ws = { spawnTimer: 1.2, vy: 0, grounded: true, fy: H - 90, fx: W / 2 };
+  document.getElementById('mode-banner').textContent = m.icon + " " + m.name;
+  document.getElementById('mode-banner').style.color = m.col;
+  document.getElementById('waveHud').textContent = wave;
+  tone(200, 'square', 0.3, 0.2);
+}
+
 function updateIntegrityUI() {
   const container = document.getElementById('integrity-meter'); container.innerHTML = '';
   for (let i = 0; i < 5; i++) {
@@ -317,91 +308,79 @@ function updateIntegrityUI() {
   }
 }
 
-function initializeGame() {
-  score = 0; wave = 1; lives = 5; dist = 0; waveT = 0; state = 'active';
-  obs = []; beams = []; parts = []; rings = [];
-  document.getElementById('ss').style.display = 'none';
-  document.getElementById('gs').style.display = 'none';
-  setupWave(); lastT = performance.now(); updateIntegrityUI(); requestAnimationFrame(masterLoop);
+function triggerDamage(x, y) {
+  if (inv > 0) return; lives--; inv = 2.0; shake = 1.5; tone(100, 'sawtooth', 0.5, 0.3); spawnParts(x, y, '#f33'); updateIntegrityUI();
+  if (lives <= 0) { state = 'over'; if (score > hiScore) localStorage.setItem('sq_hs', score); document.getElementById('gs').style.display = 'flex'; document.getElementById('final-stats').textContent = Math.floor(score); }
 }
 
-function setupWave() {
-  const m = MODES[(wave - 1) % MODES.length];
-  ws = { spawnTimer: 1.0, vy: 0, grounded: true, fy: H - 90, fx: W / 2 };
-  document.getElementById('mode-banner').textContent = m.icon + " " + m.name;
-  document.getElementById('mode-banner').style.color = m.col;
-  document.getElementById('waveHud').textContent = wave;
-  stopMusic(); setTimeout(() => { if (state === 'active') startMusic(); }, 350);
-  sfxWave();
-}
-
-function takeGameDamage() {
-  if (inv > 0) return; lives--; inv = 2.0; shake = 1.2; sfxHit(); updateIntegrityUI();
-  if (lives <= 0) { state = 'over'; stopMusic(); document.getElementById('gs').style.display = 'flex'; document.getElementById('final-stats').textContent = Math.floor(score); }
-}
-
+// --- ENGINE LOOPS ---
 function updatePhysics(dt) {
   const m = MODES[(wave - 1) % MODES.length];
-  waveT += dt; gameTime += dt; dist += dt * 18;
-  sqX += (txS - sqX) * 0.22; sqX = Math.max(35, Math.min(W - 35, sqX));
+  waveT += dt; gameTime += dt; dist += dt * 12;
+  sqX += (txS - sqX) * 0.12; sqX = Math.max(35, Math.min(W - 35, sqX));
 
   ws.spawnTimer -= dt;
   if (ws.spawnTimer <= 0) {
-    if (m.type === 'align') obs.push({ type: 'modtoe', x: Math.random()*(W-100)+50, y:-60, vy: 380 + (wave * 15) });
-    else if (m.type === 'frog') obs.push({ type: 'acer', x: Math.random()*W, y:-60, vy: 500 });
-    else if (m.id === 'kong') obs.push({ type: 'barrel', x: W + 60, y: H - 145, vx: -440 - (wave * 20) });
-    else obs.push({ type: 'anom', x: Math.random()*W, y:-60, vy: 320 + (wave * 25) });
-    ws.spawnTimer = Math.max(0.4, 0.95 - (wave * 0.1));
+    const spawnX = Math.random() * (W - 100) + 50;
+    if (m.type === 'align') obs.push({ id: 'modtoe', x: spawnX, y:-60, vy: 300 + (wave * 10) });
+    else if (m.type === 'frog') obs.push({ id: 'acer', x: spawnX, y:-60, vy: 400 });
+    else if (m.id === 'kong') obs.push({ id: 'barrel', x: W + 60, y: H - 145, vx: -350 - (wave * 15) });
+    else obs.push({ id: 'anom', x: Math.random()*W, y:-60, vy: 250 + (wave * 20), col: m.col });
+    ws.spawnTimer = Math.max(0.6, 1.3 - (wave * 0.1));
   }
 
   for (let i = obs.length - 1; i >= 0; i--) {
     const o = obs[i]; o.y += o.vy * dt || 0; o.x += o.vx * dt || 0;
     const tx = m.type === 'frog' ? ws.fx : sqX, ty = m.type === 'frog' ? ws.fy : sqY;
-    if (Math.hypot(o.x - tx, o.y - ty) < 50) {
-      if (o.type === 'modtoe') { score += 250; sfxPickup(); obs.splice(i, 1); }
-      else if (inv <= 0) { takeGameDamage(); obs.splice(i, 1); }
+    if (Math.hypot(o.x - tx, o.y - ty) < 45) {
+      if (o.id === 'modtoe') { score += 250; tone(900, 'sine', 0.2); notify(o.x, o.y, "ALIGNED!"); obs.splice(i, 1); }
+      else if (inv <= 0) { triggerDamage(tx, ty); obs.splice(i, 1); }
     } else if (o.y > H + 50 || o.x < -120) {
-      if (o.type === 'modtoe') takeGameDamage();
+      if (o.id === 'modtoe') triggerDamage(sqX, H - 20);
       obs.splice(i, 1);
     }
   }
 
   beams.forEach((b, i) => {
     b.y += b.vy * dt;
-    obs.forEach((o, oi) => { if (o.type !== 'modtoe' && Math.hypot(b.x - o.x, b.y - o.y) < 45) { score += 100; obs.splice(oi, 1); beams.splice(i, 1); } });
+    obs.forEach((o, oi) => { if (o.id !== 'modtoe' && Math.hypot(b.x - o.x, b.y - o.y) < 45) { score += 100; spawnParts(o.x, o.y, m.col); obs.splice(oi, 1); beams.splice(i, 1); } });
     if (b.y < -50) beams.splice(i, 1);
   });
 
-  if (m.type === 'jump' || m.type === 'lane') { ws.vy += 0.65; sqY += ws.vy; if (sqY > H-140) { sqY = H-140; ws.vy = 0; ws.grounded = true; } } else { sqY = H-140; }
+  if (m.type === 'jump') { ws.vy += 0.5; sqY += ws.vy; if (sqY > H-140) { sqY = H-140; ws.vy = 0; ws.grounded = true; } } else { sqY = H-140; }
   if (waveT >= WAVE_DURATION) { wave++; waveT = 0; setupWave(); }
   if (inv > 0) inv -= dt; if (shake > 0) shake -= dt * 4;
 }
 
 function drawGame(t) {
-  ctx.save(); if (shake > 0) ctx.translate((Math.random()-0.5)*shake*15, (Math.random()-0.5)*shake*15);
+  ctx.save();
+  if (shake > 0) ctx.translate((Math.random()-0.5)*shake*20, (Math.random()-0.5)*shake*20);
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
   
-  // Tactical Grid
-  ctx.strokeStyle = '#122512'; ctx.lineWidth = 1;
-  for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
-  for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  // Tactical OrthoScan Mesh
+  ctx.strokeStyle = '#0a1a0a'; ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 50) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = 0; y < H; y += 50) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
 
   const m = MODES[(wave - 1) % MODES.length];
   obs.forEach(o => {
+    ctx.shadowBlur = 15; ctx.shadowColor = m.col;
     ctx.font = '45px Arial'; ctx.textAlign = 'center';
-    let icon = o.type === 'modtoe' ? '🦶' : o.type === 'acer' ? '🕵️‍♂️' : o.type === 'barrel' ? '🛢️' : '👾';
+    let icon = o.id === 'modtoe' ? '🦶' : o.id === 'acer' ? '🕵️‍♂️' : o.id === 'barrel' ? '🛢️' : '👾';
     ctx.fillText(icon, o.x, o.y + 15);
   });
 
   beams.forEach(b => { ctx.fillStyle = '#0ff'; ctx.fillRect(b.x - 3, b.y, 6, 25); });
+  
+  parts.forEach((p, i) => { p.x += p.vx*0.016; p.y += p.vy*0.016; p.life -= p.decay*0.016; ctx.fillStyle = p.col; ctx.globalAlpha = p.life; ctx.fillRect(p.x, p.y, 4, 4); if (p.life <= 0) parts.splice(i, 1); });
+  ctx.globalAlpha = 1;
 
-  // Player Rendering
+  // Branded Squach Model
   const px = m.type === 'frog' ? ws.fx : sqX, py = m.type === 'frog' ? ws.fy : sqY;
   ctx.save(); ctx.translate(px, py);
   if (inv > 0 && Math.floor(t * 12) % 2 === 0) ctx.globalAlpha = 0.25;
-  ctx.fillStyle = m.col;
-  for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.arc(i * 9, 30, 5, 0, Math.PI * 2); ctx.fill(); }
-  ctx.shadowBlur = 25; ctx.shadowColor = m.col;
+  ctx.fillStyle = m.col; for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.arc(i * 9, 30, 5, 0, Math.PI * 2); ctx.fill(); }
+  ctx.shadowBlur = 30; ctx.shadowColor = m.col;
   ctx.fillStyle = '#3a2a1a'; ctx.beginPath(); ctx.ellipse(0, 0, 25, 34, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#FFD700'; ctx.beginPath(); ctx.arc(-8, -12, 4.5, 0, Math.PI * 2); ctx.arc(8, -12, 4.5, 0, Math.PI * 2); ctx.fill();
   ctx.restore(); ctx.restore();
