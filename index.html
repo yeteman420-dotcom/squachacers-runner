@@ -102,7 +102,11 @@ function executeAction() {
   const t = getMode().type;
   if (['align','maze','rhythm','boss'].includes(t)) beams.push({ x: sqX, y: sqY-38, vy:-1500, col:'#00ffff' });
   if (t === 'flap') ws.vy = -15;
-  if (t === 'jump' && ws.grounded) { ws.vy = -22; ws.grounded = false; }
+  if (t === 'jump') {
+    if (tyS < H/3 && ws.kongLane > 0)       { ws.kongLane--; ws.kongTargetY = ws.kongLanes[ws.kongLane]; }
+    else if (tyS > H*2/3 && ws.kongLane < 2) { ws.kongLane++; ws.kongTargetY = ws.kongLanes[ws.kongLane]; }
+    else                                      { ws.kongLane=1; ws.kongTargetY = ws.kongLanes[1]; }
+  }
 }
 
 // Particles
@@ -142,11 +146,15 @@ function initializeEngine() {
 function configureWave() {
   const m = getMode(), scale = 1 + (wave*0.2);
   obs=[]; beams=[];
+  // Kong lane Y positions: top=220, mid=400, bot=580
+  const KONG_LANES = [220, 400, 580];
   ws = { spawn:1.0, vy:0, grounded:true, dots:[], scale, girders:[H-150,H-315,H-480],
-         rhythmT:0, rhythmBPM:100+wave*12, warningZones:[], lanes:[80,175,270,365,460] };
+         rhythmT:0, rhythmBPM:100+wave*12, warningZones:[], lanes:[80,175,270,365,460],
+         kongLanes: KONG_LANES, kongLane:1, kongTargetY: KONG_LANES[1], kongX:90 };
   if(m.type==='maze') {
     for(let i=0; i<8+wave; i++) ws.dots.push({x:50+Math.random()*(W-100), y:120+Math.random()*(H-240), active:true});
   }
+  if(m.type==='jump') { sqX=90; sqY=KONG_LANES[1]; }
   if(m.type==='boss') {
     boss={ x:W/2, y:120, vx:2.5+wave*0.4, hp:25+wave*6, maxHp:25+wave*6, shootT:0, size:54 };
     bossPhase=0; sqX=W/2; sqY=H-140;
@@ -317,9 +325,9 @@ function mainLoop(ts) {
   // PHYSICS
   if(m.type==='maze') { sqX+=(txS-sqX)*.18; sqY+=(tyS-sqY)*.18; }
   else if(m.type==='jump') {
-    sqX+=(txS-sqX)*.25; ws.vy+=1.2; sqY+=ws.vy; ws.grounded=false;
-    ws.girders.forEach(gy=>{ if(ws.vy>0&&sqY>gy-46&&sqY<gy&&sqX>10&&sqX<W-10){sqY=gy-46;ws.vy=0;ws.grounded=true;} });
-    sqY=Math.min(sqY, H-100);
+    // 3-lane runner: Squach locked left, slides between lanes
+    sqX = ws.kongX;
+    sqY += (ws.kongTargetY - sqY) * 0.18;
   } else if(m.type==='flap') {
     ws.vy+=0.7; sqY+=ws.vy; sqY=Math.max(30,Math.min(H-55,sqY));
     if(sqY>H-58||sqY<38) processDamage(sqX,sqY);
@@ -327,7 +335,7 @@ function mainLoop(ts) {
     const near=ws.lanes.reduce((a,b)=>Math.abs(b-txS)<Math.abs(a-txS)?b:a);
     sqX+=(near-sqX)*.3; sqY=H-140;
   } else { sqX+=(txS-sqX)*.25; sqY=H-140; }
-  sqX=Math.max(28,Math.min(W-28,sqX));
+  if(m.type!=='jump') sqX=Math.max(28,Math.min(W-28,sqX));
 
   // SPAWN
   ws.spawn-=dt;
@@ -336,8 +344,15 @@ function mainLoop(ts) {
     if(m.type==='maze') obs.push({id:'acer',x:Math.random()*W,y:-50,vy:spd*.6,vx:(Math.random()-.5)*200});
     else if(m.type==='align') obs.push({id:'modtoe',x:40+Math.random()*(W-80),y:-60,vy:spd});
     else if(m.type==='jump') {
-      const gy=ws.girders[Math.floor(Math.random()*3)];
-      obs.push({id:'barrel',x:W+50,y:gy-48,vx:-spd*.8,vy:0});
+      // Spawn barrels on random lanes from the right
+      const lane = ws.kongLanes[Math.floor(Math.random()*3)];
+      const spd2 = (320 + wave*35) * Math.min(scale, 2.5);
+      obs.push({id:'barrel', x:W+55, y:lane, vx:-spd2, vy:0, lane});
+      // Sometimes spawn a coin/bonus on a different lane
+      if(Math.random()<0.35) {
+        const coinLane = ws.kongLanes[(Math.floor(Math.random()*3))];
+        obs.push({id:'kongcoin', x:W+80, y:coinLane, vx:-(spd2*0.85), vy:0});
+      }
     } else if(m.type==='flap') {
       const gap=Math.max(140,200-wave*8), gapY=80+Math.random()*(H-280-gap);
       obs.push({id:'pipe_t',x:W+30,y:0,w:60,h:gapY,vx:-spd*.55});
@@ -374,7 +389,7 @@ function mainLoop(ts) {
     }
     if(!hit) for(let j=obs.length-1;j>=0;j--){
       const o=obs[j];
-      if(['pipe_t','pipe_b','stomp','beat'].includes(o.id)) continue;
+      if(['pipe_t','pipe_b','stomp','beat','kongcoin'].includes(o.id)) continue;
       if(Math.hypot(b.x-o.x,b.y-o.y)<44){ score+=50*scale; debris(o.x,o.y,'#00ffff'); obs.splice(j,1); beams.splice(i,1); hit=true; break; }
     }
     if(!hit && b.y<-50) beams.splice(i,1);
@@ -411,9 +426,10 @@ function mainLoop(ts) {
       continue;
     }
 
-    const hr=o.id==='modtoe'?38:42;
+    const hr = o.id==='modtoe'?38 : o.id==='kongcoin'?30 : 42;
     if(Math.hypot(o.x-sqX,o.y-sqY)<hr){
       if(o.id==='modtoe'){ score+=300*scale; notify(o.x,o.y,'+ALIGNED','#44ff44'); obs.splice(i,1); }
+      else if(o.id==='kongcoin'){ score+=200*scale; debris(o.x,o.y,'#ffd700',8); notify(o.x,o.y,'+COIN','#ffd700'); obs.splice(i,1); }
       else { processDamage(sqX,sqY); obs.splice(i,1); }
     } else if(o.y>H+80||o.x<-160||o.x>W+160){
       if(o.id==='modtoe') processDamage(sqX,H-20);
@@ -448,10 +464,35 @@ function mainLoop(ts) {
 
   // Mode-specific env
   if(m.type==='jump'){
-    ws.girders.forEach(gy=>{
-      ctx.fillStyle='#1a3a12'; ctx.fillRect(10,gy,W-20,18);
-      ctx.fillStyle='#246018'; ctx.fillRect(10,gy,W-20,5);
+    // Scrolling jungle background stripes
+    const scrollX = (ts * 0.15) % 80;
+    ctx.fillStyle='#0a1f08';
+    for(let x=-80; x<W+80; x+=80) {
+      ctx.fillRect(x-scrollX, 0, 35, H);
+    }
+    // Three lane tracks
+    ws.kongLanes.forEach((ly, li) => {
+      // Lane floor
+      ctx.fillStyle = li===ws.kongLane ? '#2a5520' : '#1a3a12';
+      ctx.fillRect(0, ly+22, W, 18);
+      ctx.fillStyle = li===ws.kongLane ? '#3a7a28' : '#246018';
+      ctx.fillRect(0, ly+22, W, 5);
+      // Lane highlight when active
+      if(li===ws.kongLane){
+        ctx.save(); ctx.globalAlpha=0.12; ctx.fillStyle='#ff8800';
+        ctx.fillRect(0, ly-60, W, 100); ctx.restore();
+      }
+      // Lane label arrows on far left
+      ctx.font='18px Arial'; ctx.textAlign='center';
+      ctx.fillText(li===0?'▲':li===2?'▼':'●', 18, ly+10);
     });
+    // Lane instruction hint (fades after 5s)
+    if(waveT < 5) {
+      ctx.save(); ctx.globalAlpha = Math.max(0,(5-waveT)/5)*0.8;
+      ctx.font='bold 13px Black Ops One'; ctx.fillStyle='#ff8800'; ctx.textAlign='center';
+      ctx.fillText('CLICK TOP / MID / BOTTOM TO SWITCH LANES', W/2, H/2-20);
+      ctx.restore();
+    }
   }
   if(m.type==='flap'){
     const sky=ctx.createLinearGradient(0,0,0,H); sky.addColorStop(0,'#001a2a'); sky.addColorStop(1,'#002f4a');
@@ -513,6 +554,12 @@ function mainLoop(ts) {
       ctx.fillStyle='#ff00ff';ctx.fillRect(o.x-8,o.y,16,42);
       ctx.font='26px Arial';ctx.fillText('⚡',o.x,o.y+34);ctx.restore();return;
     }
+    if(o.id==='kongcoin'){
+      ctx.save(); ctx.shadowBlur=15; ctx.shadowColor='#ffd700';
+      ctx.fillStyle='#ffd700'; ctx.beginPath(); ctx.arc(o.x,o.y,16,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#ff8800'; ctx.font='bold 14px Black Ops One'; ctx.textAlign='center';
+      ctx.fillText('$',o.x,o.y+5); ctx.restore(); return;
+    }
     ctx.font='46px Arial';ctx.shadowBlur=8;ctx.shadowColor='rgba(0,0,0,0.8)';
     ctx.fillText(o.id==='modtoe'?'🦶':o.id==='acer'?'🕵️‍♂️':o.id==='barrel'?'🛢️':'👾',o.x,o.y+16);
     ctx.shadowBlur=0;
@@ -529,4 +576,3 @@ function mainLoop(ts) {
 </script>
 </body>
 </html>
-
