@@ -85,16 +85,14 @@ body{background:#000;overflow:hidden;height:100dvh;width:100vw;display:flex;alig
 <div class="screen hidden" id="final">
   <div class="final-cake" id="final-cake">🎂</div>
   <div class="final-title">Happy Birthday,<br>Mom!</div>
-  <div class="final-sub">🎉 You're amazing! 🎉</div>
+  <div class="final-sub">You're the best! 🎉</div>
   <div class="final-hearts">💕 💖 💗</div>
   <div class="final-score" id="final-score"></div>
   <button class="replay-btn" onclick="location.reload()">PLAY AGAIN</button>
 </div>
 
 <script>
-// ════════════════════════════════════════════════════════
-// AUDIO  (Web Audio API — no external files needed)
-// ════════════════════════════════════════════════════════
+// Audio
 let AC = null;
 function getAC() {
   if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
@@ -114,15 +112,12 @@ function tone(freq, dur, type='square', vol=0.15, t0=0) {
   } catch(e) {}
 }
 
-// Sound effects
 let dotFlip = 0;
 function sfxDot()   { dotFlip^=1; tone(dotFlip?880:660, 0.055, 'square', 0.10); }
 function sfxPower() { [0,1,2,3].forEach(i=>tone(280+i*130,0.11,'sawtooth',0.18,i*0.09)); }
-function sfxDeath() { for(let i=0;i<14;i++) tone(580-i*35,0.07,'sawtooth',0.22,i*0.065); }
 function sfxWin()   { [523,659,784,1047,784,1047,1319].forEach((f,i)=>tone(f,0.17,'square',0.20,i*0.15)); }
 
-// ── Birthday music: "Happy Birthday" chiptune loop ──
-// [frequency_hz, beat_length]
+// Birthday music
 const BD = [
   [392,1],[392,.5],[440,1.5],[392,1.5],[523,1.5],[494,3],
   [392,1],[392,.5],[440,1.5],[392,1.5],[587,1.5],[523,3],
@@ -140,11 +135,8 @@ function scheduleMusicNote() {
     const dur = beats * BEAT * 0.80;
     const st  = ac.currentTime + musicT;
 
-    // Melody — square wave
     tone(freq,    dur, 'square',   0.13, musicT);
-    // Harmony — triangle a fifth up
     tone(freq*1.5, dur, 'triangle', 0.05, musicT);
-    // Bass on every 4th note
     if (musicIdx % 4 === 0) tone(freq/2, BEAT*0.4, 'sawtooth', 0.07, musicT);
 
     musicT += beats * BEAT;
@@ -162,18 +154,16 @@ function startMusic() {
 }
 function stopMusic() {
   musicOn=false;
-  if (musicTimer) { clearTimeout(musicTimer); musicTimer=null; }
+  if (musicTimer) clearTimeout(musicTimer);
 }
 
-// ════════════════════════════════════════════════════════
-// STARS
-// ════════════════════════════════════════════════════════
+// Stars
 (function(){
   const c=document.getElementById('stars');
   for(let i=0;i<80;i++){
     const s=document.createElement('div'); s.className='star';
     const sz=1+Math.random()*2;
-    s.style.cssText=`width:${sz}px;height:${sz}px;left:${Math.random()*100}%;top:${Math.random()*100}%;animation-duration:${2+Math.random()*3}s;animation-delay:${Math.random()*3}s`;
+    s.style.cssText=`width:\( {sz}px;height: \){sz}px;left:\( {Math.random()*100}%;top: \){Math.random()*100}%;animation-duration:\( {2+Math.random()*3}s;animation-delay: \){Math.random()*3}s`;
     c.appendChild(s);
   }
 })();
@@ -188,15 +178,13 @@ function burst(n=50){
   for(let i=0;i<n;i++){
     const el=document.createElement('div'); el.className='confetti-piece';
     const sz=6+Math.random()*9;
-    el.style.cssText=`left:${Math.random()*100}%;width:${sz}px;height:${sz*1.4}px;background:${CCOLS[~~(Math.random()*CCOLS.length)]};--drift:${(Math.random()-.5)*240}px;animation-duration:${2.5+Math.random()*2}s;animation-delay:${Math.random()*.5}s;transform:rotate(${Math.random()*360}deg)`;
+    el.style.cssText=`left:\( {Math.random()*100}%;width: \){sz}px;height:\( {sz*1.4}px;background: \){CCOLS[~~(Math.random()*CCOLS.length)]};--drift:\( {(Math.random()-.5)*240}px;animation-duration: \){2.5+Math.random()*2}s;animation-delay:\( {Math.random()*.5}s;transform:rotate( \){Math.random()*360}deg)`;
     document.body.appendChild(el);
     setTimeout(()=>el.remove(),5500);
   }
 }
 
-// ════════════════════════════════════════════════════════
-// CANVAS & SIZING
-// ════════════════════════════════════════════════════════
+// Canvas
 const canvas=document.getElementById('game-canvas');
 const ctx=canvas.getContext('2d');
 const ROWS=23,COLS=21;
@@ -213,61 +201,43 @@ function sizeCanvas(){
   canvas.style.width=CW+'px'; canvas.style.height=CH+'px';
 }
 
-// ════════════════════════════════════════════════════════
-// MAZE
-// 0=dot  1=wall  2=open  3=power  4=ghost-house-interior
-//
-// Ghost house occupies rows 9-11, cols 8-12 (value=4).
-// The house is enclosed by walls at cols 7,13 and rows 9,11.
-// The ONLY exit is at row 8, col 10 (value=2) — open above the door.
-// Ghosts start in row 10 and path straight up through the open
-// house cells (4 is walkable for ghosts) to row 8 col 10, then out.
-// ════════════════════════════════════════════════════════
+// Maze (same as before)
 const MT = [
-//  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20
-  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], // 0
-  [ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], // 1
-  [ 1, 3, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 3, 1], // 2
-  [ 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1], // 3
-  [ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], // 4
-  [ 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1], // 5
-  [ 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1], // 6
-  [ 1, 1, 1, 1, 0, 1, 1, 1, 2, 2, 2, 2, 2, 1, 1, 1, 0, 1, 1, 1, 1], // 7  ← exit corridor (col 8-12 open)
-  [ 2, 2, 2, 1, 0, 2, 2, 1, 1, 1, 2, 1, 1, 1, 2, 2, 0, 1, 2, 2, 2], // 8  ← side tunnels; col 10 open
-  [ 1, 1, 1, 1, 0, 1, 2, 1, 4, 4, 4, 4, 4, 1, 2, 1, 0, 1, 1, 1, 1], // 9  ← house top (wall at 7,13)
-  [ 2, 2, 2, 2, 0, 2, 2, 1, 4, 4, 4, 4, 4, 1, 2, 2, 0, 2, 2, 2, 2], // 10 ← house interior / side tunnel
-  [ 1, 1, 1, 1, 0, 1, 2, 1, 4, 4, 4, 4, 4, 1, 2, 1, 0, 1, 1, 1, 1], // 11 ← house bottom
-  [ 2, 2, 2, 1, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 1, 2, 2, 2], // 12
-  [ 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1], // 13
-  [ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], // 14
-  [ 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1], // 15
-  [ 1, 3, 0, 1, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 1, 0, 3, 1], // 16
-  [ 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1], // 17
-  [ 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1], // 18
-  [ 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1], // 19
-  [ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], // 20
-  [ 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1], // 21
-  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], // 22
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1],
+  [1,3,1,1,0,1,1,1,0,1,1,1,0,1,1,1,0,1,1,3,1],
+  [1,0,1,1,0,1,1,1,0,1,1,1,0,1,1,1,0,1,1,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,1,1,0,1,0,1,1,1,1,1,1,1,0,1,0,1,1,0,1],
+  [1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1],
+  [1,1,1,1,0,1,1,1,2,2,2,2,2,1,1,1,0,1,1,1,1],
+  [2,2,2,1,0,2,2,1,1,1,2,1,1,1,2,2,0,1,2,2,2],
+  [1,1,1,1,0,1,2,1,4,4,4,4,4,1,2,1,0,1,1,1,1],
+  [2,2,2,2,0,2,2,1,4,4,4,4,4,1,2,2,0,2,2,2,2],
+  [1,1,1,1,0,1,2,1,4,4,4,4,4,1,2,1,0,1,1,1,1],
+  [2,2,2,1,0,1,2,2,2,2,2,2,2,2,2,1,0,1,2,2,2],
+  [1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1],
+  [1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1],
+  [1,0,1,1,0,1,1,1,0,1,1,1,0,1,1,1,0,1,1,0,1],
+  [1,3,0,1,0,0,0,0,0,0,2,0,0,0,0,0,0,1,0,3,1],
+  [1,1,0,1,0,1,0,1,1,1,1,1,1,1,0,1,0,1,0,1,1],
+  [1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1],
+  [1,0,1,1,1,1,1,1,0,1,1,1,0,1,1,1,1,1,1,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,1,1,0,1,0,1,1,1,0,1,1,1,0,1,0,1,1,0,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
 ];
 
-// ════════════════════════════════════════════════════════
-// WALKABILITY HELPERS
-// ════════════════════════════════════════════════════════
-// Duck: can walk on 0,2,3  (NOT walls=1, NOT house=4)
 function duckOK(r,c){
   if(r<0||r>=ROWS||c<0||c>=COLS) return false;
   const t=maze[r][c]; return t===0||t===2||t===3;
 }
-// Ghost: can walk on 0,2,3,4  (NOT walls=1)
 function ghostOK(r,c){
   if(r<0||r>=ROWS||c<0||c>=COLS) return false;
   return maze[r][c]!==1;
 }
 
-// ════════════════════════════════════════════════════════
-// GAME STATE
-// ════════════════════════════════════════════════════════
-const GCOLS=['#FF6B9D','#FF9F43','#54A0FF','#5F27CD'];
+// Game State
 const UP={r:-1,c:0}, DN={r:1,c:0}, LT={r:0,c:-1}, RT={r:0,c:1};
 const ADIRS=[UP,DN,LT,RT];
 
@@ -283,12 +253,11 @@ function initGame(){
     speed:CELL*5.5, mouthAngle:0.25
   };
 
-  // Each ghost starts in house row 10, exits straight UP through col 10
   const GS=[
-    {c:9,  col:GCOLS[0], rel:0.3},
-    {c:10, col:GCOLS[1], rel:2.0},
-    {c:11, col:GCOLS[2], rel:3.8},
-    {c:12, col:GCOLS[3], rel:5.6},
+    {c:9,  col:'#FF6B9D', rel:0.3},
+    {c:10, col:'#FF9F43', rel:2.0},
+    {c:11, col:'#54A0FF', rel:3.8},
+    {c:12, col:'#5F27CD', rel:5.6},
   ];
   ghosts=GS.map(s=>({
     x: s.c*CELL+CELL/2,
@@ -311,9 +280,7 @@ function updateHUD(){
   document.getElementById('hud-lives').textContent='🦆'.repeat(Math.max(0,lives));
 }
 
-// ════════════════════════════════════════════════════════
-// INPUT
-// ════════════════════════════════════════════════════════
+// Input
 document.addEventListener('keydown',e=>{
   const m={ArrowUp:UP,w:UP,W:UP,ArrowDown:DN,s:DN,S:DN,ArrowLeft:LT,a:LT,A:LT,ArrowRight:RT,d:RT,D:RT};
   if(m[e.key]){duck.nextDir=m[e.key];e.preventDefault();}
@@ -330,21 +297,18 @@ canvas.addEventListener('touchend',e=>{
   duck.nextDir=Math.abs(dx)>Math.abs(dy)?(dx>0?RT:LT):(dy>0?DN:UP);
 },{passive:true});
 
-// ════════════════════════════════════════════════════════
-// UPDATE
-// ════════════════════════════════════════════════════════
+// Update
 function update(dt){
-  if(gameOver||won)return;
+  if(gameOver||won) return;
   blinkT+=dt;
   moveDuck(dt);
   ghosts.forEach((g,i)=>moveGhost(g,dt,i));
-  // Win check
+
   let rem=0;
   for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(maze[r][c]===0||maze[r][c]===3) rem++;
-  if(rem===0){won=true;stopMusic();sfxWin();setTimeout(showFinal,1400);}
+  if(rem===0){ won=true; stopMusic(); sfxWin(); setTimeout(showWinCelebration,800); }
 }
 
-// Grid-snap helpers
 function cellOf(px){ return Math.round((px-CELL/2)/CELL); }
 function centerOf(cell){ return cell*CELL+CELL/2; }
 
@@ -354,7 +318,6 @@ function moveDuck(dt){
   const cx=centerOf(cc), cy=centerOf(cr);
   const nearX=Math.abs(d.x-cx)<4, nearY=Math.abs(d.y-cy)<4;
 
-  // Try to turn at cell center
   if(nearX&&nearY){
     const nd=d.nextDir;
     if(duckOK(cr+nd.r,cc+nd.c)) d.dir={...nd};
@@ -368,59 +331,45 @@ function moveDuck(dt){
   } else {
     if(nearX) d.x=cx; if(nearY) d.y=cy;
   }
-  // Tunnel wrap
-  if(d.x<-CELL/2)     d.x=CW+CELL/2;
-  if(d.x>CW+CELL/2)   d.x=-CELL/2;
 
-  // Eat
+  if(d.x<-CELL/2) d.x=CW+CELL/2;
+  if(d.x>CW+CELL/2) d.x=-CELL/2;
+
   const er=cellOf(d.y),ec=cellOf(d.x);
   if(er>=0&&er<ROWS&&ec>=0&&ec<COLS){
     if(maze[er][ec]===0){maze[er][ec]=2;score+=10;updateHUD();sfxDot();}
     if(maze[er][ec]===3){maze[er][ec]=2;score+=50;updateHUD();sfxPower();}
   }
 
-  // Mouth
   d.mouthAngle+=dt*4*mouthDir;
   if(d.mouthAngle>0.35)mouthDir=-1;
   if(d.mouthAngle<0.02)mouthDir=1;
 }
 
 function moveGhost(g,dt,idx){
-  // Pre-release: bob in place
   if(!g.released){
     g.releaseT-=dt;
     if(g.releaseT>0){
       g.y=g.startY+Math.sin(Date.now()*0.003+idx*1.2)*3;
       return;
     }
-    // Release: aim for exit at (row 8, col 10)
     g.released=true;
     g.exiting=true;
-    g.x=g.startX; g.y=g.startY; // snap back before moving
+    g.x=g.startX; g.y=g.startY;
     g.dir={...UP};
   }
 
   const mv=g.speed*dt;
 
-  // EXITING: move straight up, drifting x toward col 10 exit
   if(g.exiting){
-    const exitX=centerOf(10); // col 10
-    // Drift toward exit column
-    if(Math.abs(g.x-exitX)>1){
-      g.x+=(exitX-g.x)*Math.min(1,dt*8);
-    } else {
-      g.x=exitX;
-    }
+    const exitX=centerOf(10);
+    if(Math.abs(g.x-exitX)>1) g.x+=(exitX-g.x)*Math.min(1,dt*8);
+    else g.x=exitX;
     g.y-=mv;
-    g.dir={...UP};
-    // Once above row 8 (y < row 8 center), we're free
-    if(g.y < centerOf(8)){
-      g.exiting=false;
-    }
+    if(g.y < centerOf(8)) g.exiting=false;
     return;
   }
 
-  // NORMAL movement: grid-based pathfinding at intersections
   const cr=cellOf(g.y), cc=cellOf(g.x);
   const cx=centerOf(cc), cy=centerOf(cr);
   const nearX=Math.abs(g.x-cx)<3, nearY=Math.abs(g.y-cy)<3;
@@ -428,7 +377,7 @@ function moveGhost(g,dt,idx){
   if(nearX&&nearY){
     g.x=cx; g.y=cy;
     const opts=ADIRS.filter(d=>{
-      if(d.r===-g.dir.r&&d.c===-g.dir.c) return false; // no U-turn
+      if(d.r===-g.dir.r&&d.c===-g.dir.c) return false;
       return ghostOK(cr+d.r,cc+d.c);
     });
 
@@ -438,8 +387,7 @@ function moveGhost(g,dt,idx){
     } else if(opts.length===1){
       chosen=opts[0];
     } else {
-      // 70% chase, 30% random
-      if(Math.random()<0.70){
+      if(Math.random()<0.65){
         const dr=duck.y-g.y, dc=duck.x-g.x;
         opts.sort((a,b)=>(b.r*Math.sign(dr)+b.c*Math.sign(dc))-(a.r*Math.sign(dr)+a.c*Math.sign(dc)));
         chosen=opts[0];
@@ -454,30 +402,14 @@ function moveGhost(g,dt,idx){
   if(g.dir.c!==0&&nearY) g.y=cy;
   g.x+=g.dir.c*mv; g.y+=g.dir.r*mv;
 
-  // Tunnel wrap
-  if(g.x<-CELL/2)   g.x=CW+CELL/2;
+  if(g.x<-CELL/2) g.x=CW+CELL/2;
   if(g.x>CW+CELL/2) g.x=-CELL/2;
-
-  // Collision
-  if(Math.hypot(g.x-duck.x,g.y-duck.y)<CELL*0.70){
-    lives--; updateHUD(); sfxDeath();
-    if(lives<=0){gameOver=true;stopMusic();setTimeout(showFinal,1800);return;}
-    // Reset
-    duck.x=centerOf(10); duck.y=centerOf(16); duck.dir={...LT}; duck.nextDir={...LT};
-    ghosts.forEach((gh,i)=>{
-      gh.x=gh.startX; gh.y=gh.startY;
-      gh.dir={...UP}; gh.released=false; gh.releaseT=i*2+0.3; gh.exiting=true;
-    });
-  }
+  // NO COLLISION DEATH - ghosts are friendly!
 }
 
-// ════════════════════════════════════════════════════════
-// DRAW
-// ════════════════════════════════════════════════════════
 function draw(ts){
   ctx.fillStyle='#000'; ctx.fillRect(0,0,CW,CH);
 
-  // Maze tiles
   for(let r=0;r<ROWS;r++){
     for(let c=0;c<COLS;c++){
       const x=c*CELL,y=r*CELL,t=maze[r][c];
@@ -492,67 +424,48 @@ function draw(ts){
         const p=0.7+Math.sin(ts*0.006)*0.3;
         ctx.fillStyle='#ff9ef7';
         ctx.beginPath(); ctx.arc(x+CELL/2,y+CELL/2,CELL*0.28*p,0,Math.PI*2); ctx.fill();
-        ctx.strokeStyle='rgba(255,158,247,0.35)'; ctx.lineWidth=2;
-        ctx.beginPath(); ctx.arc(x+CELL/2,y+CELL/2,CELL*0.40*p,0,Math.PI*2); ctx.stroke();
       } else if(t===4){
         ctx.fillStyle='#080818'; ctx.fillRect(x,y,CELL,CELL);
       }
     }
   }
 
-  // Ghost house door — pink bar across top of house
   ctx.strokeStyle='#ff9ef7'; ctx.lineWidth=3;
   ctx.beginPath(); ctx.moveTo(8*CELL,9*CELL); ctx.lineTo(13*CELL,9*CELL); ctx.stroke();
 
   drawDuck(duck);
   ghosts.forEach(g=>drawGhost(g,ts));
 
-  // Overlays
-  if(gameOver){
-    ctx.fillStyle='rgba(0,0,0,0.65)'; ctx.fillRect(0,0,CW,CH);
-    ctx.textAlign='center';
-    ctx.fillStyle='#ff3333'; ctx.font=`bold ${CELL}px 'Press Start 2P'`;
-    ctx.fillText('GAME',CW/2,CH/2-CELL*0.7);
-    ctx.fillText('OVER',CW/2,CH/2+CELL*0.5);
-    ctx.fillStyle='#fff'; ctx.font=`${CELL*0.46}px 'Press Start 2P'`;
-    ctx.fillText('TRY AGAIN!',CW/2,CH/2+CELL*1.9);
-  }
   if(won){
     ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(0,0,CW,CH);
     ctx.textAlign='center';
     ctx.fillStyle='#FFE033'; ctx.font=`bold ${CELL*0.85}px 'Press Start 2P'`;
-    ctx.fillText('YOU WIN!',CW/2,CH/2);
-    ctx.fillStyle='#ff9ef7'; ctx.font=`${CELL*0.44}px 'Press Start 2P'`;
-    ctx.fillText('🎉 MOM WINS! 🎉',CW/2,CH/2+CELL*1.4);
+    ctx.fillText('YOU WIN!',CW/2,CH/2 - CELL*0.3);
+    ctx.fillStyle='#ff9ef7'; ctx.font=`${CELL*0.5}px 'Press Start 2P'`;
+    ctx.fillText('🎉 MOM WINS! 🎉',CW/2,CH/2 + CELL*0.8);
   }
 }
 
-// ── Duck: proper duck shape (body oval + head circle + split bill + eye) ──
 function drawDuck(d){
   ctx.save();
   ctx.translate(d.x,d.y);
   let angle=0;
-  if(d.dir.c===1)angle=0;
-  else if(d.dir.c===-1)angle=Math.PI;
-  else if(d.dir.r===-1)angle=-Math.PI/2;
-  else if(d.dir.r===1)angle=Math.PI/2;
+  if(d.dir.c===1) angle=0;
+  else if(d.dir.c===-1) angle=Math.PI;
+  else if(d.dir.r===-1) angle=-Math.PI/2;
+  else if(d.dir.r===1) angle=Math.PI/2;
   ctx.rotate(angle);
 
   const s=CELL*0.41;
-
-  // Body — wide oval
   ctx.fillStyle='#FFE033';
   ctx.beginPath(); ctx.ellipse(0,s*0.12,s*0.78,s*0.52,0,0,Math.PI*2); ctx.fill();
 
-  // Wing shading
   ctx.fillStyle='rgba(205,148,0,0.48)';
   ctx.beginPath(); ctx.ellipse(s*0.05,s*0.28,s*0.44,s*0.23,-0.18,0,Math.PI*2); ctx.fill();
 
-  // Head
   ctx.fillStyle='#FFE033';
   ctx.beginPath(); ctx.arc(s*0.68,-s*0.28,s*0.33,0,Math.PI*2); ctx.fill();
 
-  // Bill — upper jaw
   const bOpen=d.mouthAngle*s*0.45;
   ctx.fillStyle='#FF8C00';
   ctx.beginPath();
@@ -561,7 +474,7 @@ function drawDuck(d){
   ctx.lineTo(s*1.30,-s*0.26-bOpen*0.15);
   ctx.lineTo(s*0.90,-s*0.22);
   ctx.closePath(); ctx.fill();
-  // Bill — lower jaw
+
   ctx.beginPath();
   ctx.moveTo(s*0.88,-s*0.28);
   ctx.lineTo(s*1.30,-s*0.28+bOpen);
@@ -569,7 +482,6 @@ function drawDuck(d){
   ctx.lineTo(s*0.90,-s*0.34);
   ctx.closePath(); ctx.fill();
 
-  // Eye
   ctx.fillStyle='#111';
   ctx.beginPath(); ctx.arc(s*0.72,-s*0.42,s*0.09,0,Math.PI*2); ctx.fill();
   ctx.fillStyle='#fff';
@@ -578,19 +490,16 @@ function drawDuck(d){
   ctx.restore();
 }
 
-// ── Ghost: blinking between own colour and white ──
 function drawGhost(g,ts){
-  const isWhite=Math.floor(blinkT/0.30)%2===1;
+  const isWhite=Math.floor(blinkT/0.28)%2===1;
   const bodyCol=isWhite?'#ffffff':g.col;
   const r=CELL*0.41;
 
   ctx.save(); ctx.translate(g.x,g.y);
 
-  // Body dome
   ctx.fillStyle=bodyCol;
   ctx.beginPath();
   ctx.arc(0,-r*0.1,r,Math.PI,0,false);
-  // Wavy skirt (4 bumps)
   for(let i=0;i<4;i++){
     const x1=r-i*(r*2/4), x2=r-(i+1)*(r*2/4);
     ctx.quadraticCurveTo((x1+x2)/2,r*(i%2===0?0.72:0.22),x2,r*0.5);
@@ -598,7 +507,6 @@ function drawGhost(g,ts){
   ctx.lineTo(-r,r*0.5);
   ctx.closePath(); ctx.fill();
 
-  // Eyes (always show)
   const eyeWhite=isWhite?'#444':'#fff';
   const eyePupil=isWhite?'#fff':'#1a33ff';
   ctx.fillStyle=eyeWhite;
@@ -612,9 +520,7 @@ function drawGhost(g,ts){
   ctx.restore();
 }
 
-// ════════════════════════════════════════════════════════
-// GAME LOOP
-// ════════════════════════════════════════════════════════
+// Game Loop
 function tick(ts){
   const dt=Math.min((ts-lastTime)/1000,0.05);
   lastTime=ts;
@@ -629,30 +535,58 @@ function startGame(){
   initGame();
   document.getElementById('dpad').style.display=isMobile()?'grid':'none';
   lastTime=performance.now();
-  if(gameLoop)cancelAnimationFrame(gameLoop);
+  if(gameLoop) cancelAnimationFrame(gameLoop);
   gameLoop=requestAnimationFrame(tick);
-  startMusic(); // user gesture unlocks AudioContext
+  startMusic();
 }
 
-// ════════════════════════════════════════════════════════
-// FINAL SCREEN
-// ════════════════════════════════════════════════════════
-function showFinal(){
-  if(gameLoop){cancelAnimationFrame(gameLoop);gameLoop=null;}
+// Duck Dance Celebration
+let danceInterval = null;
+function duckDance() {
+  const d = duck;
+  let phase = 0;
+  if (danceInterval) clearInterval(danceInterval);
+  
+  danceInterval = setInterval(() => {
+    phase++;
+    // Happy wiggle + spin
+    d.dir = (phase % 4 === 0) ? RT : (phase % 4 === 1) ? UP : (phase % 4 === 2) ? LT : DN;
+    d.mouthAngle = 0.35; // big happy mouth
+    d.x += Math.sin(phase*0.8)*3;
+    d.y += Math.cos(phase*0.6)*2;
+  }, 80);
+}
+
+function showWinCelebration(){
+  if(gameLoop){ cancelAnimationFrame(gameLoop); gameLoop=null; }
+  if(danceInterval) clearInterval(danceInterval);
+  
   showScreen('final');
-  burst(80); setTimeout(()=>burst(55),800); setTimeout(()=>burst(45),1700); setTimeout(()=>burst(35),2600);
-  document.getElementById('final-score').textContent='Final Score: '+score+' pts — nice work, Mom!';
-  const cake=document.getElementById('final-cake');
-  const swaps=['🎂','🎉','🍰','🥳','💖','🎊']; let taps=0;
-  cake.addEventListener('click',function(){
-    burst(20);sfxWin();taps++;
-    this.textContent=swaps[taps%swaps.length];
-    setTimeout(()=>this.textContent='🎂',600);
+  burst(90); 
+  setTimeout(()=>burst(70),600); 
+  setTimeout(()=>burst(60),1400);
+  
+  document.getElementById('final-score').textContent = `Final Score: ${score} points — You did it, Mom!`;
+  
+  // Start duck dance animation (visual only, on final screen we just celebrate)
+  setTimeout(() => {
+    duckDance();
+  }, 300);
+
+  const cake = document.getElementById('final-cake');
+  const swaps = ['🎂','🎉','🍰','🥳','🦆','💖'];
+  let taps = 0;
+  cake.addEventListener('click', function handler(){
+    burst(25);
+    sfxWin();
+    taps++;
+    this.textContent = swaps[taps % swaps.length];
+    setTimeout(()=>{ this.textContent='🎂'; }, 500);
   });
 }
 
 window.addEventListener('resize',()=>{
-  if(!document.getElementById('game-screen').classList.contains('hidden'))sizeCanvas();
+  if(!document.getElementById('game-screen').classList.contains('hidden')) sizeCanvas();
 });
 </script>
 </body>
